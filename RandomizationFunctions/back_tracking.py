@@ -16,8 +16,9 @@ import numpy as np
 from time import time
 
 class List_repair(object):
-    def __init__(self, one = 1):
-        self.one = one
+    def __init__(self, start_backtracking = 0.95, shuffle_limit = 50):
+        self.backtrack_lim = start_backtracking
+        self.shuff_lim = shuffle_limit
 
     def constrain_checks(self, target_list, start_ind):
         '''
@@ -159,9 +160,9 @@ class List_repair(object):
                      frame = frame.sort_values('ID')
                      frame = frame.reset_index(drop=True)
                      # if we cannot improve by shuffling we resort to backtracking
-                     if reset_counter > 50:
+                     if reset_counter > self.shuff_lim:
                          # backtracking is relatively slow - so we only use it if our data frame is sufficiently shuffled already
-                         if round(min_1/total, 1) >= 95:
+                         if round(min_1/total, 1) >= self.backtrack_lim:
                              # perform backtracking
                              solution = self.repair_reverse_backtrack(min_1, frame) 
                              # update the dataframe with the solution provided by backtracking
