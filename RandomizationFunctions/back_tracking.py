@@ -165,12 +165,16 @@ class List_repair(object):
                          if round(min_1/total, 1) >= self.backtrack_lim:
                              # perform backtracking
                              solution = self.repair_reverse_backtrack(min_1, frame) 
-                             # update the dataframe with the solution provided by backtracking
-                             frame = self.update_backtracked_indices(frame , solution)
-                             # perform the condition check again
-                             indices = self.constrain_checks(frame, 0)
-                             frame['ID'] = frame.index
-                             min_1 = min(indices)
+                             if solution is False:
+                                 #if backtracking could not find a solution, start over
+                                 min_1 = 0
+                             else:
+                                 # update the dataframe with the solution provided by backtracking
+                                 frame = self.update_backtracked_indices(frame , solution)
+                                 # perform the condition check again
+                                 indices = self.constrain_checks(frame, 0)
+                                 frame['ID'] = frame.index
+                                 min_1 = min(indices)
                          else:
                              # if we get stuck early restart
                              reset_counter = 0
