@@ -16,7 +16,7 @@ import numpy as np
 from time import time
 
 class List_repair(object):
-    def __init__(self, start_backtracking = 0.95, shuffle_limit = 50):
+    def __init__(self, start_backtracking = 0.85, shuffle_limit = 50):
         self.backtrack_lim = start_backtracking
         self.shuff_lim = shuffle_limit
 
@@ -48,7 +48,7 @@ class List_repair(object):
         # the same response side should not follow more than three times in a row
         crit_side = self.check_repeats(3, target_list['Correct'], item=None, start_ind=start_ind)
         # the same congruency should not follow more than three times in a row
-        crit_con = self.check_repeats(3, target_list['Congruency'], item=None, start_ind=start_ind)
+        crit_con = self.check_repeats(4, target_list['Congruency'], item=None, start_ind=start_ind)
         # turns to one only if all our conditions are met
         crit_total = (crit_diag, crit_item, crit_ind, crit_side, crit_con)
         # return unique problematic indices
@@ -145,7 +145,7 @@ class List_repair(object):
         # var
         total = len(frame)
         while min_1 != len(frame):
-             
+             print('randomized ', round((min_1/total)*100, 2), '% of the data.' )
              # next we randomly shuffle all rows from the part where our conditions aren't met yet
              frame.loc[min_1:] = np.random.permutation(frame.loc[min_1:])
              # we have to reset the indexes so that our search algorithm can find the correct locations 
@@ -236,6 +236,7 @@ class List_repair(object):
                 # check if we already reached our criteria or our new best 
                 # solution is better than the old one
                 if new_best >= len(frame) or new_best > best_pos:
+                    print('New Best is at ', new_best)
                     # safe the new best solution
                     solution.append([best_pos, i])
                     # end the the function when done or proceed recursively
@@ -293,20 +294,3 @@ class List_repair(object):
             final_frame = self.swap_element(final_frame, pair[0], pair[1])
         return final_frame
 
-## Example script
-
-# Get the dataframe
-randomize = BlockListRandomizer()
-my_list = randomize.create_LWPC_sets()
-my_list = my_list.sample(frac=1)
-my_list = my_list.reset_index(drop=True)
-target_list = my_list
-
-# import repair functions
-repair = List_repair()
-indices = repair.constrain_checks(my_list, 0)
-min_1 = min(indices)
-
-# repair the data frame
-fina_1 = repair.repair(indices,  my_list)
-repair.constrain_checks(fina_1 , 0)
