@@ -165,10 +165,10 @@ class BlockListRandomizer(object):
     
     def create_IWPC_Blocks(self, IWSPC_feature):
         try:
-            if IWSPC_feature is 'distance':
+            if IWSPC_feature is 'size':
                 small_num = self.item_pool_dist_1[:2] + self.item_pool_dist_2[:2]
-                large_num = item_pool_dist_1[2:] + self.item_pool_dist_2[2:]
-            elif IWSPC_feature is 'size':
+                large_num = self.item_pool_dist_1[2:] + self.item_pool_dist_2[2:]
+            elif IWSPC_feature is 'distance':
                 small_num = self.item_pool_dist_1
                 large_num = self.item_pool_dist_2
         except NameError:
