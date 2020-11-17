@@ -23,8 +23,8 @@ from time import time
 from math import floor
 
 class BlockListRandomizer(object):
-    def __init__(self, Trial_Nr = 336, Block_Nr = 4, Ind_prop = 0.8,
-                 Inducer_Nr = 236, IWSPC_feature = 'distance', size_L = 300,
+    def __init__(self, Trial_Nr = 268, Block_Nr = 4, Ind_prop = 0.8,
+                 Inducer_Nr = 188, IWSPC_feature = 'distance', size_L = 300,
                  size_M = 260):
         self.trlnum = Trial_Nr
         self.Block_Nr = Block_Nr
@@ -81,11 +81,14 @@ class BlockListRandomizer(object):
         LWPC_list = pd.DataFrame({'Item': Item_list, 'Trl_type': Item_type, 
                                'Correct': [None]*len(Item_list),
                                  'Congruency': [None]*len(Item_list),
-                                 'IWPC_type': [None]*len(Item_list),
+                                 'Analysis_type': [None]*len(Item_list),
                                  'Block': Block_Nr,
                                  'ID': range(len(Item_list))})
+        LWPC_list.Analysis_type = blockType
         # now assgin biased congruency conditions to the inducer items
         # First shuffle correct so left and right are not biased across blocks
+        
+        
         '''
         Note: this is probably the ugliest bit of coding I ever did. Sorry for 
         the eyesore! 
@@ -210,7 +213,7 @@ class BlockListRandomizer(object):
         IWPC_list = pd.DataFrame({'Item': Item_list, 'Trl_type': Item_type, 
                                'Correct': [None]*len(Item_list),
                                  'Congruency': [None]*len(Item_list),
-                                 'IWPC_type': [None]*len(Item_list),
+                                 'Analysis_type': [None]*len(Item_list),
                                  'Block': Block_Nr,
                                  'ID': range(len(Item_list))})
         # now assgin biased congruency conditions to the inducer items
