@@ -23,7 +23,7 @@ for i in range(30):
 PilotSeeds.to_csv(r'C:\Users\juliu\OneDrive\Dokumente\PhD-Thesis\Teaching\Adaptive Control\Experiment\AdaptiveControl\OS_Experiment\Lists\PilotSeeds.csv', header=True)    
 
  
-for i in range(5,30):
+for i in range(30):
     random.seed(PilotSeeds.Seed[i])
     # Workspace
     block = BlockListRandomizer() 
