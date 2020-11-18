@@ -254,9 +254,9 @@ class BlockListRandomizer(object):
                         if num%5 != 0:
                                 IWPC_list.loc[rep, 'Congruency'] = s_major
                         if main_con == ['small']: 
-                            IWPC_list.loc[rep, 'IWPC_type'] = 'main_con'
+                            IWPC_list.loc[rep, 'Analysis_type'] = 'main_con'
                         else:
-                            IWPC_list.loc[rep, 'IWPC_type'] = 'main_incon'
+                            IWPC_list.loc[rep, 'Analysis_type'] = 'main_incon'
                     if ind_item in large_num:
                         if num%5 == 0:
                                 IWPC_list.loc[rep, 'Congruency'] = l_minor
@@ -264,9 +264,9 @@ class BlockListRandomizer(object):
                                 IWPC_list.loc[rep, 'Congruency'] = l_major
                         print(main_con)
                         if main_con == ['large']: 
-                            IWPC_list.loc[rep, 'IWPC_type'] = 'main_con'
+                            IWPC_list.loc[rep, 'Analysis_type'] = 'main_con'
                         else:
-                            IWPC_list.loc[rep, 'IWPC_type'] = 'main_incon'
+                            IWPC_list.loc[rep, 'Analysis_type'] = 'main_incon'
         # now assgin unbiased congruency conditions to the diagnostic items
         # again shuffle correct and congruence so left and right and congruent and incongruent 
         # are not (SLIGHTLY) biased across blocks and participants for the diagnostic items
@@ -295,14 +295,14 @@ class BlockListRandomizer(object):
                     print(main_con)
                     if item in small_num:
                         if main_con == ['small']: 
-                            IWPC_list.loc[rep, 'IWPC_type'] = 'main_con'
+                            IWPC_list.loc[rep, 'Analysis_type'] = 'main_con'
                         else:
-                            IWPC_list.loc[rep, 'IWPC_type'] = 'main_incon'
+                            IWPC_list.loc[rep, 'Analysis_type'] = 'main_incon'
                     if item in large_num:
                         if main_con == ['large']: 
-                            IWPC_list.loc[rep, 'IWPC_type'] = 'main_con'
+                            IWPC_list.loc[rep, 'Analysis_type'] = 'main_con'
                         else:
-                            IWPC_list.loc[rep, 'IWPC_type'] = 'main_incon'
+                            IWPC_list.loc[rep, 'Analysis_type'] = 'main_incon'
         # Next we return the datasets as individual blocks
         Block_A = IWPC_list[IWPC_list.Block == 1]
         Block_B = IWPC_list[IWPC_list.Block == 2]
