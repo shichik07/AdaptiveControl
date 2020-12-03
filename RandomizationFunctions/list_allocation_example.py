@@ -91,13 +91,46 @@ for group in groups:
         fina_I3 = repair.repair(indices_I3,  I3)
         fina_I4 = repair.repair(indices_I4,  I4)
         
+        #Super ugly hard coded but it was a last minute fix
         if PilotSeeds.BlockOrder[i] == 'incon_first': #incongruent comes first 
+             fina_LIn1['Block']=1 
+             fina_LIn2['Block']=2 
+             fina_LCon1['Block']=3 
+             fina_LCon2['Block']=4 
+             fina_I1['Block']=5 
+             fina_I2['Block']=6 
+             fina_I3['Block']=7 
+             fina_I4['Block']=8
              frames = [fina_LIn1, fina_LIn2, fina_LCon1, fina_LCon2, fina_I1, fina_I2, fina_I3, fina_I4]
         elif PilotSeeds.BlockOrder[i] == 'con_first': #congruent comes first
+             fina_LCon1['Block']=1 
+             fina_LCon2['Block']=2 
+             fina_LIn1['Block']=3 
+             fina_LIn2['Block']=4 
+             fina_I1['Block']=5 
+             fina_I2['Block']=6 
+             fina_I3['Block']=7 
+             fina_I4['Block']=8
              frames = [fina_LCon1, fina_LCon2, fina_LIn1, fina_LIn2, fina_I1, fina_I2, fina_I3, fina_I4]
         elif PilotSeeds.BlockOrder[i] == 'con_last': #congruent comes last
+             fina_I1['Block']=1 
+             fina_I2['Block']=2 
+             fina_I3['Block']=3 
+             fina_I4['Block']=4 
+             fina_LIn1['Block']=5 
+             fina_LIn2['Block']=6 
+             fina_LCon1['Block']=7 
+             fina_LCon2['Block']=8 
              frames = [ fina_I1, fina_I2, fina_I3, fina_I4, fina_LIn1, fina_LIn2, fina_LCon1, fina_LCon2]
         elif PilotSeeds.BlockOrder[i] == 'incon_last': #incongruent comes last
+             fina_I1['Block']=1 
+             fina_I2['Block']=2 
+             fina_I3['Block']=3 
+             fina_I4['Block']=4 
+             fina_LCon1['Block']=5 
+             fina_LCon2['Block']=6 
+             fina_LIn1['Block']=7 
+             fina_LIn2['Block']=8 
              frames = [ fina_I1, fina_I2, fina_I3, fina_I4, fina_LCon1, fina_LCon2, fina_LIn1, fina_LIn2]
         
         df = pd.concat(frames)
