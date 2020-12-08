@@ -48,7 +48,7 @@ for group in groups:
                 con = False   
         seeds_used.append(PilotSeeds.Seed[i])
     # Save the data frame as csv
-    fname = r'C:\Users\juliu\OneDrive\Dokumente\PhD-Thesis\Teaching\Adaptive Control\Experiment\AdaptiveControl\OS_Experiment\Lists\AdapConSeeds_' + group + '.csv'
+    fname = r'C:\Users\juliu\OneDrive\Dokumente\PhD-Thesis\Teaching\Adaptive Control\Experiment\AdaptiveControl\OS_Experiment\ExpLists\AdapConSeeds_' + group + '.csv'
     PilotSeeds.to_csv(fname, header=True)    
 
  
@@ -136,6 +136,6 @@ for group in groups:
         df = pd.concat(frames)
         
         # save file
-        filename = r'C:\Users\juliu\OneDrive\Dokumente\PhD-Thesis\Teaching\Adaptive Control\Experiment\AdaptiveControl\OS_Experiment\Lists\AdapCon_' + group + 'List_' + str(i) +'.csv'
+        filename = r'C:\Users\juliu\OneDrive\Dokumente\PhD-Thesis\Teaching\Adaptive Control\Experiment\AdaptiveControl\OS_Experiment\ExpLists\AdapCon_' + group + 'List_' + str(i) +'.csv'
         df.to_csv(filename, header=True)
     
