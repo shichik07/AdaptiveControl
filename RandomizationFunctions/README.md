@@ -1,1 +1,5 @@
+# General randomization functionality for the numerical Stroop task
+
 Functions (if I get to it module) to make sure item and Block orders are porperly randomized. Is initialized in the beginning and afterwards item lists can be used for the experiment.
+
+For anybody interested in using these functions, we highly **recommend using a different way to generate their non randomized experimental list** than the BlockListRandomizer.py class. This class is largely hard coded - and because of that turned out to be slightly biased for different block item list lengths. For the item specific effects this resulted in minor block imbalances in terms of congruent versus incongruent inducer items - although over blocks these imbalances were removed. In practice that means that we had for our block item lists (totaling 134 items each) imbalances 49.25/50.75 of congruent and incongruent items and vice versa. This likely will not have influenced our results - however for shorter lists these imbalances can become larger.
