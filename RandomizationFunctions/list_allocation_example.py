@@ -15,10 +15,10 @@ from time import time
 from math import floor
 import os
 
-workdir = r'C:/Users/juliu/OneDrive/Dokumente/PhD-Thesis/Teaching/Adaptive Control/Experiment/AdaptiveControl/RandomizationFunctions'
+workdir = r'/home/jules/Dropbox/PhD_Thesis/Teaching/Adaptive_Control/Experiment/AdaptiveControl/RandomizationFunctions'
 os.chdir(workdir)
 
-List_nr = 32
+List_nr = 8
 groups = ['PD', 'CO', 'CY', 'Pilot']
 seeds_used = list()
 
@@ -27,7 +27,7 @@ for group in groups:
     # Randomize the Blockconditions as random triplets
     B_order = ['incon_first', 'con_first', 'con_last', 'incon_last']
     new_list = list()
-    for i in range(8):
+    for i in range(2):
         random.shuffle(B_order)
         new_list += random.sample(B_order, len(B_order))
     
@@ -48,7 +48,8 @@ for group in groups:
                 con = False   
         seeds_used.append(PilotSeeds.Seed[i])
     # Save the data frame as csv
-    fname = r'C:\Users\juliu\OneDrive\Dokumente\PhD-Thesis\Teaching\Adaptive Control\Experiment\AdaptiveControl\OS_Experiment\ExpLists\AdapConSeeds_' + group + '.csv'
+    fname = r'~/Dropbox/PhD_Thesis/Teaching/Adaptive_Control/ExperimentLists/AdapConSeeds_' + group + '.csv'
+    
     PilotSeeds.to_csv(fname, header=True)    
 
  
@@ -136,6 +137,6 @@ for group in groups:
         df = pd.concat(frames)
         
         # save file
-        filename = r'C:\Users\juliu\OneDrive\Dokumente\PhD-Thesis\Teaching\Adaptive Control\Experiment\AdaptiveControl\OS_Experiment\ExpLists\AdapCon_' + group + 'List_' + str(i) +'.csv'
+        filename = r'~/Dropbox/PhD_Thesis/Teaching/Adaptive_Control/ExperimentLists/AdapCon_' + group + 'List_' + str(i) +'.csv'
         df.to_csv(filename, header=True)
     
