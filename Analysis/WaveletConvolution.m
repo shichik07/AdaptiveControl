@@ -30,7 +30,7 @@
 clear all; close all; clc
 dbstop if error
 
-eegl                         = 'C:\Program Files\MATLAB\EEGSoftware/eeglab2022.0';
+eegl                         = '/home/jules/Dropbox/PhD_Thesis/EEG_Labor/EEG_Software/eeglab2021.1';
 % set directories
 dirs.home                    = 'G:\Julia Ficke\AdaptiveControl\CleanData_EEG'; %hier habe ich das Gruppenlaufwerk gespeichert - du müsstest hier deinen Speicherort für die Daten eintragen
 dirs.eegsave                 = 'E:\AdaptiveControl\Data\FrequencyData'; % hier Ordner zum Speichern der Ergebenisse - im Gruppenlaufwerk unter PipelineValidate zu finden
