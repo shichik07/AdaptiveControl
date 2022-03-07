@@ -68,10 +68,12 @@ EEG                          = pop_loadset('filename', fileID,'filepath',[folder
 length_wavelet               = 4; % wavelet lengths will be 4 seconds
 wave_pnts                    = length_wavelet* EEG.srate;
 cycle_num                    = 4; % number of wavelet cycles
-freq_up                      = 60; % upper frequency limit in Hz
+freq_up                      = 40; % upper frequency limit in Hz
 freq_low                     = 4; %lower freqeuncy limit in Hz
-freq_num                     = 30; %number of freqeuncies to be estimated
+freq_num                     = 20; %number of freqeuncies to be estimated
 freq_range                   = logspace(log10(freq_low), log10(freq_up), freq_num); %range of frequencies
+limit                        = 262144; % limit of what matrix operations my PC is capable of performing - important for zero padding
+bin_nr                       = 10; %number of bins in which we analyze the data
 
 % time vector for wavlet (-2:2s)
 time                         = -wave_pnts/EEG.srate/2: 1/EEG.srate : wave_pnts/EEG.srate/2;
@@ -100,16 +102,10 @@ for sub = 1:Part_N
     folderID            = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
     EEG                 = pop_loadset('filename', fileID,'filepath',[folderID]); % load file
     
-    n_data_sub1               = EEG.pnts;
-    
-    % define convolution parameters (used from example code by Mike C. Cohen)
-    n_wavelet            = length(time);
-    n_data               = EEG.pnts;
-    n_convolution        = n_wavelet+n_data-1;
-    n_conv_pow2          = pow2(nextpow2(n_convolution));
-    half_of_wavelet_size = (n_wavelet-1)/2;
-
-
+    % Because our caluclation power is limited, we split the dataset into
+    % approximately ten equally large chucks and perform the wavelet
+    % convolution on each chuck seperately
+    bounds = round(linspace(0,EEG.trials, bin_nr +1));
     
 %     % get fft of data - later i might just concatenate all channels to one
 %     % array
@@ -118,35 +114,70 @@ for sub = 1:Part_N
 %         fft_dat(chan,:) = fft(EEG.data(chan,:), n_conv_pow2);
 %     end
     
-    % initialize
-    eegpower            = zeros(EEG.nbchan, freq_num , EEG.pnts);
-    itpc                = zeros(EEG.nbchan, freq_num , EEG.pnts);
+    % initialize variables of interest - itcp can but will not be assessed
+    % now, as we intend to remove phase dependent pertubations. We perform
+    % the wavelet convolution on four seconds of data, but after baseline
+    % correction we only intend to keep the interval from -200ms to 1s post
+    eegpower            = zeros(EEG.nbchan, freq_num , EEG.srate*1.2, EEG.trials);
+    %itpc                = zeros(EEG.nbchan, freq_num , EEG.pnts, EGG.trials);
     
     fprintf('Performing wavelet convolution on participant %s. \n',Participant_IDs{sub})
     
-    
-    for chan = 1: EEG.nbchan
-        for freq = 1:freq_num
-            % get fft transform of wavelet
-            fft_wavelet = fft(wavelets(freq,:),n_conv_pow2);
-            
-            % get fft of data
-            fft_dat = fft(EEG.data(chan,:), n_conv_pow2);
-            
-            % convolve data and wavelet
-            decomp = fft_dat.*fft_wavelet;
-            
-            % transform back
-            decomp = ifft(decomp);
-            decomp = decomp(1:n_convolution);
-            decomp = decomp(half_of_wavelet_size + 1:end - half_of_wavelet_size);
-            % take mean of all trials, compute magnitude and square
-            %decomp = reshape(decomp, [EEG.pnts,EEG.trials]);
-            
-            
-            % extract ITPC
-            itpc(chan, freq, :) = abs(mean(exp(1i*angle(decomp)),2));
-            eegpower(chan, freq,:) = mean(abs(decomp),2).^2;
+    for bin = 1:bin_nr
+        fprintf('Bin %s of 10. \n',num2str(bin))
+        % get bin data and parameter 
+        bin_data = EEG.data(:,:,bounds(bin):bounds(bin+1));
+        bin_trl = size(bin_data,3); % nr of trials in this bin
+        
+        % reshape trials into one vector
+        bin_data = reshape(bin_data, [EEG.nbchan, EEG.pnts*bin_trl]);
+        
+        % define convolution parameters (used from example code by Mike C. Cohen)
+        n_wavelet            = length(time);
+        n_data               = EEG.pnts*bin_trl;
+        n_convolution        = n_wavelet+n_data-1;
+        n_conv_pow2          = pow2(nextpow2(n_convolution));
+        half_of_wavelet_size = (n_wavelet-1)/2;
+        
+        if n_conv_pow2 > limit
+            % double check that PC can actually exectue concolution on data
+            % this size. Otherwise break program instead of PC
+            break
+        end
+        
+        % perform convolution on first data bin
+        for chan = 1: EEG.nbchan
+            for freq = 1:freq_num
+                % get fft transform of wavelet
+                fft_wavelet = fft(wavelets(freq,:),n_conv_pow2);
+                
+                % get fft of data
+                fft_dat = fft(bin_data(chan,:), n_conv_pow2);
+                
+                % convolve data and wavelet
+                decomp = fft_dat.*fft_wavelet;
+                
+                % transform back
+                decomp = ifft(decomp);
+                decomp = decomp(1:n_convolution);
+                decomp = decomp(half_of_wavelet_size + 1:end - half_of_wavelet_size);
+                % take mean of all trials, compute magnitude and square
+                decomp = reshape(decomp, [EEG.pnts,EEG.trials]);
+                
+                
+                % extract power
+                %itpc(chan, freq, :) = abs(mean(exp(1i*angle(decomp)),2));
+                
+                %convert to decible scale
+                decomp = mean(abs(decomp),2).^2;
+                
+                %perform baseline correction
+                %temppower = 10*log10(temppower./mean(temppower(bsidx(1):bsidx(2))));
+        
+                
+                %save in matrix
+                eegpower(chan, freq,:,:) = decomp
+            end
         end
     end
     % save power and itpc data, baseline correction will be performed
@@ -220,3 +251,14 @@ end
 
 % restore online reference - which means the analysis has to be done
 % again... that might be a task for later
+
+
+A = zeros(9,2,3);
+B = ones (9,2);
+C = ones (9,2)+1;
+
+A(:,:,2) = B;
+A(:,:,3) = C;
+B = reshape(A,[9,6]);
+
+B = reshape(B,[9,2,3]);
