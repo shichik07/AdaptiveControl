@@ -43,16 +43,11 @@ Participant_IDs              = dir(dirs.home);
 Participant_IDs              = Participant_IDs([Participant_IDs(:).isdir]); % remove all files (isdir property is 0)
 Participant_IDs              = Participant_IDs(~ismember({Participant_IDs(:).name},{'.','..'}));% remove '.' and '..'
 
-%remove PD 16, index 68 - no dat available
+%remove PD 16, index 68 - no data available and was excluded from the
+%analysis
 Participant_IDs(68)          = []; 
 Participant_IDs              = {Participant_IDs(:).name};  
 Part_N                       = length(Participant_IDs); %number of participants
-
-% event onset codes
-onset =  {  'S 21'  'S 22'  'S 23'  'S 24'  'S 41'  'S 42'  'S 43' ...
-    'S 44'  'S 61'  'S 62'  'S 63'  'S 64'  'S 81'  'S 82'  'S 83'  'S 84'  };
-epoch_dur = [2  2];
-
 
 % INSERT PARTICIPANTS WE WISH NOT TO ANALYZE
 
@@ -65,7 +60,7 @@ eeglab
 % Load one dataset to get parameters for wavelet anaylsis
 sub                          = 3;
 fileID                       = strcat(Participant_IDs{sub}, '_epoched_freq.set'); %get file ID
-folderID                     = fullfile(dirs.home,Participant_IDs{sub}, 'eeg' );%get folder ID
+folderID                     = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
 EEG                          = pop_loadset('filename', fileID,'filepath',[folderID]); % load file
 
 
@@ -78,14 +73,9 @@ freq_low                     = 4; %lower freqeuncy limit in Hz
 freq_num                     = 30; %number of freqeuncies to be estimated
 freq_range                   = logspace(log10(freq_low), log10(freq_up), freq_num); %range of frequencies
 
-
 % time vector for wavlet (-2:2s)
 time                         = -wave_pnts/EEG.srate/2: 1/EEG.srate : wave_pnts/EEG.srate/2;
-
-%veconset =  {  'S 21'  'S 22'  'S 23'  'S 24'  'S 41'  'S 42'  'S 43' ...
-    'S 44'  'S 61'  'S 62'  'S 63'  'S 64'  'S 81'  'S 82'  'S 83'  'S 84'  };
-epoch_dur = [2  2];
-tor of standard deviations per frequency
+%vector of standard deviations per frequency
 s                            = cycle_num./(2*pi*freq_range);
 
 % create wavelets
@@ -104,10 +94,10 @@ end
 
 %% Perform Wavelet analysis on participant data
 
-for sub = 2:Part_N
+for sub = 1:Part_N
     % load data set
     fileID              = strcat(Participant_IDs{sub}, '_epoched_freq.set'); %get file ID
-    folderID            = fullfile(dirs.home,Participant_IDs{sub}, 'eeg' );%get folder ID
+    folderID            = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
     EEG                 = pop_loadset('filename', fileID,'filepath',[folderID]); % load file
     
     n_data_sub1               = EEG.pnts;
