@@ -161,17 +161,18 @@ for sub = 1:Part_N
                 decomp = ifft(decomp);
                 decomp = decomp(1:n_convolution);
                 decomp = decomp(half_of_wavelet_size + 1:end - half_of_wavelet_size);
-                % take mean of all trials, compute magnitude and square
-                decomp = reshape(decomp, [EEG.pnts,EEG.trials]);
+                % get original trial shape back
+                decomp = reshape(decomp, [EEG.pnts,bin_trl]);
                 
                 
                 % extract power
                 %itpc(chan, freq, :) = abs(mean(exp(1i*angle(decomp)),2));
                 
-                %convert to decible scale
+                % take mean of all trials, compute magnitude and square to
+                % get power
                 decomp = mean(abs(decomp),2).^2;
                 
-                %perform baseline correction
+                % perform baseline correction and convert to decible scale
                 %temppower = 10*log10(temppower./mean(temppower(bsidx(1):bsidx(2))));
         
                 
