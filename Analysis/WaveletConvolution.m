@@ -125,8 +125,9 @@ for sub = 1:Part_N
     
     for bin = 1:bin_nr
         fprintf('Bin %s of 10. \n',num2str(bin))
-        % get bin data and parameter 
-        bin_data = EEG.data(:,:,bounds(bin):bounds(bin+1));
+        % get bin data and parameter
+        bin_data = EEG.data(:,:,bounds(bin)+1:bounds(bin+1));
+       
         bin_trl = size(bin_data,3); % nr of trials in this bin
         
         % reshape trials into one vector
@@ -173,6 +174,8 @@ for sub = 1:Part_N
                 decomp = mean(abs(decomp),2).^2;
                 
                 % perform baseline correction and convert to decible scale
+                % find indices per trial that need to be adjusted
+                
                 %temppower = 10*log10(temppower./mean(temppower(bsidx(1):bsidx(2))));
         
                 
