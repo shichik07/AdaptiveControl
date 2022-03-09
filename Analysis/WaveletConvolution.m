@@ -88,6 +88,12 @@ for fr = 1:freq_num
     wavelets(fr,:) = c_sine.* gaus;
 end
 
+% Baseline indices prior to fixation presentation in samples
+Baseline_time = [-0.400 -0.200]*EEG.srate;
+keep_time =  [dsearchn(EEG.times',[-200]), dsearchn(EEG.times',[1000])]; % time range we want to keep in the final dataset
+New_trial_time = -200/1000: 1/EEG.srate : 1000/1000;
+
+
 
 % briefly inspect wavelets
 % figure
@@ -118,13 +124,13 @@ for sub = 1:Part_N
     % now, as we intend to remove phase dependent pertubations. We perform
     % the wavelet convolution on four seconds of data, but after baseline
     % correction we only intend to keep the interval from -200ms to 1s post
-    eegpower            = zeros(EEG.nbchan, freq_num , EEG.srate*1.2, EEG.trials);
+    eegpower            = zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)), EEG.trials);
     %itpc                = zeros(EEG.nbchan, freq_num , EEG.pnts, EGG.trials);
     
     fprintf('Performing wavelet convolution on participant %s. \n',Participant_IDs{sub})
     
     for bin = 1:bin_nr
-        fprintf('Bin %s of 10. \n',num2str(bin))
+        fprintf('Analyzing trial subset %s of 10. \n',num2str(bin))
         % get bin data and parameter
         bin_data = EEG.data(:,:,bounds(bin)+1:bounds(bin+1));
        
@@ -171,18 +177,33 @@ for sub = 1:Part_N
                 
                 % take mean of all trials, compute magnitude and square to
                 % get power
-                decomp = mean(abs(decomp),2).^2;
+                decomp = abs(decomp).^2;
+                
+                
+                % find indices per trial that need to be adjusted
+                fix_time = zeros(bin_trl, 2);
+                base_power = zeros(bin_trl,1);
+                baseidx = [];
+                
+                for trl = 1:bin_trl
+                    trl_idx = bounds(bin)+trl;
+                    event_lat = cell2mat(EEG.epoch(trl_idx).eventlatency);
+                    baseidx = event_lat(dsearchn(event_lat',0)-1); % get the correct time stamp
+                    baseidx = dsearchn(EEG.times',baseidx);% translate to indices
+                    fix_time(trl,:) = baseidx + Baseline_time; %safe indices and subtract samples for baseline indices
+                    base_power(trl) = mean(decomp(fix_time(trl,1): fix_time(trl,2), trl));
+                end
                 
                 % perform baseline correction and convert to decible scale
-                % find indices per trial that need to be adjusted
-                
-                %temppower = 10*log10(temppower./mean(temppower(bsidx(1):bsidx(2))));
-        
+                temppower = 10*log10(decomp./base_power');
                 
                 %save in matrix
-                eegpower(chan, freq,:,:) = decomp
+                eegpower(chan, freq,:,bounds(bin)+1:bounds(bin+1)) = temppower(keep_time(1):keep_time(2),:);
             end
         end
+        
+        fprintf('Data of participant %s analyzed. Saving data... \n',Participant_IDs{sub})
+    
     end
     % save power and itpc data, baseline correction will be performed
     % afterwards
@@ -266,3 +287,21 @@ A(:,:,3) = C;
 B = reshape(A,[9,6]);
 
 B = reshape(B,[9,2,3]);
+
+A = [9,6,3;4,2,8;1,0,0]; 
+B = [3,2,1];
+
+bs = base_power';
+temppower = bsxfun(@rdivide,decomp,bs(:)');
+temppower = decomp./base_power';
+
+
+a = temppower(:,1);
+b = temppower(:,2);
+c = decomp(:,1)./base_power(1);
+d = decomp(:,2)./base_power(2);
+
+mean(a == c)
+mean(b == d)
+
+a = temppower(keep_time(1):keep_time(2),:);
