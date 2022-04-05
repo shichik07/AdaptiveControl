@@ -1,0 +1,399 @@
+---
+title: "Adaptive Control Behavior Bayesian Exploration"
+author: "Julius Kricheldorff"
+date: "3/30/2022"
+output: html_document
+---
+
+# Bayesian explorative analysis of the EEG data
+
+Load packages
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(brms)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(bayesplot)
+library(tictoc)
+library(extraDistr) # more distributions
+library(haven)
+library(purrr)
+```
+
+## Generate data
+
+Before we look at the data, let us generate some data
+
+```{r cars}
+set.seed(4298)
+Sample_size<- 1112
+artif_dat <- tibble(rt = exp(rtnorm(Sample_size/2, 6.5, 0.5, a = 0))) %>%
+  mutate(congruency = "congruent") %>%
+  bind_rows(
+    tibble(
+      rt = exp(rtnorm(Sample_size/2, 6.8, 0.5, a = 0)),
+      congruency = "incongruent"
+    )
+  )
+ggplot(data = artif_dat, aes(rt,  fill = congruency)) +
+  geom_density(aes(group = congruency), alpha = 0.5) +
+  scale_fill_brewer(palette="Set3") +
+  xlab("Reaction Time") + ggtitle("Distribution Fake Reaction Time") +
+  theme()
+
+
+```
+
+## Fit a brms model to our fake data
+
+We assume the following priors:
+
+$$ \alpha \sim Normal(6,1.5) $$
+$$ \sigma \sim Normal_+ (0,1)$$
+First we simulate the priors we slected to generate some data. We need to make some assumptions for our priors. For the numerical Stroop task we expect baseline eman RT around 500 - 600ms in healthy young participants. 
+
+Cohen Kadosh, R., Gevers, W., & Notebaert, W. (2011). Sequential analysis of the numerical Stroop effect reveals response suppression. Journal of Experimental Psychology: Learning, Memory, and Cognition, 37(5), 1243.
+
+Since our participants are a little older we have to adjust for age - putting our estimates more in the vicinity of about 600 - 800ms mean reaction time. Since participants have to respond within 2 seconds we have an upper bound of 2000ms. Responses under 200ms can safely be considered early random - so a lower bound of 200ms. Mean RTs of 300ms and lower can also be considered as very unlikely/improbable.
+
+Kaufmann, L., Ischebeck, A., Weiss, E., Koppelstaetter, F., Siedentopf, C., Vogel, S. E., ... & Wood, G. (2008). An fMRI study of the numerical Stroop task in individuals with and without minimal cognitive impairment. cortex, 44(9), 1248-1255.
+
+Effects of congruency from the previous paper range from 20ms to 100ms mean delay. Effects larger than 300ms seem very unlikely and we will assume this as an upperbound.
+
+With regard to the effects of reactive and proactive control we look at Gonthier et al. For proactive control they reported a mean difference in Stroop effects of ~50ms in the inducer and ~30ms in the diagnostic items. Mind you, this was a "regular" Stroop task with images of animals, not a numerical stroop task. With regard to reactive control we see only a difference of 20ms in the inducer items (!). Results for the diagnostic items are not even reported. However, based on these results we should most certainly no exclude the null and we can surely disregard effects with mean magnitudes exceed 100ms. With regard to our random effects it is hard to put it into numbers but we might expect variability of plus/minus 300ms on average, upper bound of 500ms? We can use the same magnitudes as priors for the item specific effects.
+
+With regard to group we assume a difference of 100ms for healthy controls and Parkinson's Patients
+
+## Parameter
+
+With these rough estimates in mind, let us first produce one dataset. First we specify our parameter for the experiment (we will do this examplary only for the proactive control for now):
+
+```{r}
+Total_trl <- 1024
+Task_trl <- Total_trl/2
+Block_trl <- Task_trl/2
+Item_nr <- 8 # we have 8 items
+sub_group <- 30
+groups <- 2
+n_observations <- 16
+
+iter <- 1
+grand_mu <- rnorm(iter, 6, 1.5)
+grand_sigma <- rnorm(iter, 0, 1)
+congruency_mu <- rnorm(iter, 0, 1)
+group_mu      <- rnorm(iter, 0, 1)
+block_mu <- rnorm(iter, 0, 1)
+
+
+```
+
+
+
+## Function to generate samples
+
+Awkwardly written for-loops
+```{r}
+NumericalStroop_rt_fun <- function(n_observations, grand_mu, grand_sigma, congruency_mu, block_mu, group_mu){
+  df_predicted <- tibble(
+    rt_pred = numeric(0),
+    subj    = numeric(0),
+    item    = numeric(0),
+    group   = numeric(0),
+    congruency = numeric(0),
+    Block_type = numeric(0),
+    iter    = numeric(0)
+  )
+  for (i in seq_along(grand_mu)){
+    random_int_item <- rnorm(8,0, 1)
+    for (grp in seq_len(2)){
+      random_int_subj <- rnorm(30,0, 1)
+      for (sub in seq_len(30)){
+        for (con in seq_len(2)){ # congruent/incongruent
+          for(blck in seq_len(2)){
+            for (itm in seq_len(8)){
+              mu <- grand_mu[i]
+              sigma <-grand_sigma[i]
+              cong <- (con-1)*congruency_mu[i]
+              group <- (grp-1)* group_mu[i]
+              block <- (blck -1)*block_mu[i]
+              total_mu <- mu + group + block + cong + random_int_subj[sub] + random_int_item[itm] 
+              df_predicted <- bind_rows(
+                df_predicted,
+                tibble(rt_pred = exp(rnorm(n_observations, total_mu, sigma)),
+                       subj = sub,
+                       group = grp,
+                       Block_type = blck,
+                       congruency = con,
+                       item = itm,
+                       iter = i)
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+  df_predicted
+}
+
+```
+Now let us try this with the purr package
+
+```{r}
+# First thing we are going to do is create the basic layout of our dataset
+data_layout <- function(n_observations){
+  df_predicted <- tibble(
+    rt_pred = numeric(0),
+    subj    = numeric(0),
+    item    = numeric(0),
+    group   = numeric(0),
+    congruency = numeric(0),
+    Block_type = numeric(0),
+    iter    = numeric(0)
+  )
+  
+  random_int_item <- rnorm(8,0, 1)
+  for (grp in seq_len(2)){
+    random_int_subj <- rnorm(30,0, 1)
+    for (sub in seq_len(30)){
+      if (grp == 2){
+        sub <- sub + 30
+      }
+      for (con in seq_len(2)){ # congruent/incongruent
+        for(blck in seq_len(2)){
+          for (itm in seq_len(8)){
+            df_predicted <- bind_rows(
+              df_predicted,
+              tibble(rt_pred = replicate(n_observations, 0),
+                     subj = sub,
+                     group = grp-1,
+                     Block_type = blck-1,
+                     congruency = con-1,
+                     item = itm)
+            )
+          }
+        }
+      }
+    }
+  } 
+  df_predicted
+}
+
+layout_data_set <- data_layout(n_observations = 16)
+```
+Next we write a function to generate data using the datamatrix we previously created
+
+```{r}
+## Function to calculate the grand mean as a sum of the model parameters
+grand_mu_calc <- function(data, grand_mu, grand_sigma, subject_mu, item_mu, congruency_mu, block_mu, group_mu){
+  new_mu <- grand_mu + data$group*group_mu + data$Block_type*block_mu + data$congruency*congruency_mu + subject_mu[data$subj] + item_mu[data$item]
+new_mu
+}
+
+lognormal_predictive_distributions <- function(data,
+                                               grand_mu, 
+                                               grand_sigma, 
+                                               congruency_mu, 
+                                               block_mu, 
+                                               group_mu){
+  map2_dfr(grand_mu, grand_sigma, congruency_mu,block_mu, group_mu, function(mu_s, sigma_s, con_s, blc_s, grp_s){
+    subject_mu <- rtnorm(60, 0, 0.5, a = 0)
+    item_mu <- rtnorm(8, 0, 0.5, a = 0)
+    grand_mu <- grand_mu_calc(
+      data = data,
+      grand_mu = mu_s, 
+      grand_sigma = sigma_s, 
+      subject_mu = subject_mu, 
+      item_mu = item_mu, 
+      congruency_mu = con_s, 
+      block_mu =  blc_s, 
+      group_mu = grp_s)
+    tibble(
+      grand_mu = grand_mu,
+      grand_sigma = sigma_s,
+      rt_pred = exp(rnorm(nrow(data), grand_mu, sigma_s)),
+      subj = data$subj,
+      item = data$item, 
+      group = data$group,
+      congruency = data$congruency,
+      Block_type = data$Block_type)
+  }, .id = "iter") %>%
+    # .id is always a string and
+    # needs to be converted to a number
+    mutate(iter = as.numeric(iter))
+}
+```
+
+```{r}
+mu_s <- 5.7
+sigma_s <- 0.14
+con_s <- 0.2
+blc_s <- 0.2
+grp_s <- 0.2
+
+
+abc <- function(data, mu_s, sigma_s, con_s, blc_s, grp_s){
+  print("mu_s is: ", mu_s)
+    subject_mu <- rtnorm(60, 0, 0.5, a = 0)
+    item_mu <- rtnorm(8, 0, 0.5, a = 0)
+    grand_mu <- grand_mu_calc(
+      data = data,
+      grand_mu = mu_s, 
+      grand_sigma = sigma_s, 
+      subject_mu = subject_mu, 
+      item_mu = item_mu, 
+      congruency_mu = con_s, 
+      block_mu =  blc_s, 
+      group_mu = grp_s)
+    tibble(
+      grand_mu = grand_mu,
+      grand_sigma = sigma_s,
+      rt_pred = exp(rnorm(nrow(data), grand_mu, sigma_s)),
+      subj = data$subj,
+      item = data$item,
+      group = data$group,
+      congruency = data$congruency,
+      Block_type = data$Block_type)
+  }
+a <- abc(data = layout_data_set, mu_s = mu_s, sigma_s = sigma_s, con_s = con_s, blc_s = blc_s, grp_s = grp_s)
+
+iter <- 10
+n_observations <- 16
+grand_mu <- rnorm(iter, 6, 1.5)
+grand_sigma <- rtnorm(iter, 0, 0.5, a = 0)
+congruency_mu <- rtnorm(iter, 0, 0.5, a = 0)
+group_mu      <- rtnorm(iter, 0, 0.5, a = 0)
+block_mu <- rtnorm(iter, 0, 0.5, a = 0)
+data <- layout_data_set
+grand_mu_calc <- function(data, grand_mu, grand_sigma, subject_mu, item_mu, congruency_mu, block_mu, group_mu){
+  new_mu <- grand_mu + data$group*group_mu + data$Block_type*block_mu + data$congruency*congruency_mu + subject_mu[data$subj] + item_mu[data$item]
+new_mu
+}
+
+
+# print_fun <- function(mus, sigmas, cons, blcks, groups){
+#   sprintf("mu is %f, sigma is %f, cons is %f, blcks is %f, groups is %f", mus, sigmas, cons, blcks, groups)
+# }
+# pmap(dist_params,print_fun)
+
+dist_params <- list(mus = grand_mu, sigmas = grand_sigma, cons = congruency_mu, blcks = block_mu, groups = group_mu)
+
+tic()
+a <- pmap_dfr(dist_params, function(mus, sigmas, cons, blcks, groups){
+  print_fun(mus, sigmas, cons, blcks, groups)
+  subject_mu <- rtnorm(60, 0, 0.5, a = 0)
+  item_mu <- rtnorm(8, 0, 0.5, a = 0)
+  grand_mu <- grand_mu_calc(
+    data = data,
+    grand_mu = mus,
+    grand_sigma = sigmas,
+    subject_mu = subject_mu,
+    item_mu = item_mu,
+    congruency_mu = cons,
+    block_mu =  blcks,
+    group_mu = groups)
+  tibble( 
+    rt_pred = exp(rnorm(nrow(data), grand_mu, grand_sigma)),
+    grand_mu = grand_mu,
+    grand_sigma = sigmas,
+    subj = data$subj,
+    item = data$item,
+    group = data$group,
+    congruency = data$congruency,
+    Block_type = data$Block_type)
+}, .id = "iter") %>%
+  mutate(iter = as.numeric(iter))
+toc()
+
+sum(distinct(a, grand_mu))
+```
+
+
+
+Now that we have the function to generate data, let us try our hand at
+```{r}
+# First generate sample from the specified prior
+iter <- 10
+n_observations <- 16
+grand_mu <- rnorm(iter, 6, 1.5)
+grand_sigma <- rtnorm(iter, 0, 0.5, a = 0)
+congruency_mu <- rtnorm(iter, 0, 0.5, a = 0)
+group_mu      <- rtnorm(iter, 0, 0.5, a = 0)
+block_mu <- rtnorm(iter, 0, 0.5, a = 0)
+
+# next let us generate some samples
+# tic()
+# prior_predictive_samples_old <- NumericalStroop_rt_fun(
+#   n_observations = n_observations, 
+#   grand_mu = grand_mu, 
+#   grand_sigma = grand_sigma, 
+#   congruency_mu = congruency_mu, 
+#   block_mu = block_mu, 
+#   group_mu = group_mu
+# ) 
+# toc()
+tic()
+prior_predictive_samples_new <- lognormal_predictive_distributions(data = layout_data_set,
+                                               grand_mu = grand_mu, 
+                                               grand_sigma = grand_sigma, 
+                                               congruency_mu = congruency_mu, 
+                                               block_mu = block_mu, 
+                                               group_mu = group_mu
+                                               )
+toc()
+```
+
+Now let us plot one resulting distribution
+
+```{r}
+one_iter = prior_predictive_samples %>% 
+  filter(iter ==1) %>%
+  mutate(congruency = as_factor(congruency))
+ggplot(data = one_iter, aes(rt_pred, fill = congruency)) +
+   geom_density(aes(group = congruency), alpha = 0.5) +
+  scale_fill_brewer(palette="Set3") +
+  xlab("Reaction Time") + ggtitle("Distribution Fake Reaction Time") +
+  theme()
+
+```
+Plot min, max, mean and median parameters of all simulations to get a feel for the priors
+
+Glancing at one Dataset
+
+Note this did not work at all - I would rather want to see the distribution of minimum, maximum and mean values as an indicator of the appropriateness of the selected priors
+```{r}
+ggplot(data = prior_predictive_samples , aes(x=rt_pred)) + geom_density(aes(group=iter)) + xlim(c(0, 4600))
+
+```
+So This does not seem to be working as intended. My Prior seems to be allow for quite a bit of variance. Nevertheless, let us fit a model to my fake data with brms
+```{r, include=FALSE}
+fit_artif_dat <- brm( rt ~ 1 + congruency,
+                      data = artif_dat,
+                     family = lognormal(),
+                     prior = c(
+                       prior(normal(6, 1.5), class = Intercept),
+                       prior(normal(0,1), class = sigma),
+                       prior(normal(0,1), class = b, coef = congruency)
+                     )
+                     )
+```
+
+Next get a summary of the parameter:
+```{r}
+posterior_summary(fit_artif_dat)[, c("Estimate", "Q2.5", "Q97.5")]
+plot(fit_artif_dat)
+```
+First things first - the Bayesian model beautifully recovered the parameter we used to generate the data. But since the parameter are on the logscale, let us transform them back to the millisecond scale for the intercept.
+
+```{r}
+mu_samples <- exp(as_draws_df(fit_artif_dat)$b_Intercept)
+ggplot(data = tibble(rt =mu_samples), aes(rt)) +
+  geom_density() + xlab("Time in ms") + ggtitle("Mean Reaction Time")
+c(mean_rt = mean(mu_samples), quantile(mu_samples, c(0.025, 0.975)))
+
+```
+## Notes for in between
+
+For the model we only have to estimate the parameter for the partial pooling parameter - Hence I do not need an estimate for every single participant - but instead can use the estimate I get from my Inducer parameter. I will make it not 100% informative but only use it to restrict the range of parameter
