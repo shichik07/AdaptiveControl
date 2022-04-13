@@ -1,0 +1,47 @@
+function items = get_trlindices(EEG)
+
+Items.ISPC_MC_C =[];
+Items.ISPC_MC_I =[];
+Items.ISPC_MI_C =[];
+Items.ISPC_MI_I =[];
+Items.LWPC_MC_C =[];
+Items.LWPC_MC_I =[];
+Items.LWPC_MI_C =[];
+Items.LWPC_MI_I =[];
+
+
+
+for i=1:EEG.trials
+    % get 0 trigger
+    onset = cellfun(@(x)x == 0, EEG.epoch(i).eventlatency);
+    
+    if EEG.epoch(i).eventanswer{onset} == "correct" % proceed only with correctly answered trials
+        if EEG.epoch(i).eventanalysetype{onset} == "MI"
+            if EEG.epoch(i).eventcongruency{onset} == "incongruent"
+                Items.LWPC_MI_I(end+1) = i;
+            else
+                Items.LWPC_MI_C(end+1) = i;
+            end
+        elseif EEG.epoch(i).eventanalysetype{onset} == "MC"
+            if EEG.epoch(i).eventcongruency{onset} == "incongruent"
+                Items.LWPC_MC_I(end+1) = i;
+            else
+                Items.LWPC_MC_C(end+1) = i;
+            end
+        elseif EEG.epoch(i).eventanalysetype{onset} == "main_incon"
+            if EEG.epoch(i).eventcongruency{onset} == "incongruent"
+                Items.ISPC_MI_I(end+1) = i;
+            else
+                Items.ISPC_MI_C(end+1) = i;
+            end
+        elseif EEG.epoch(i).eventanalysetype{onset} == "main_con"
+            if EEG.epoch(i).eventcongruency{onset} == "incongruent"
+                Items.LSPC_MC_I(end+1) = i;
+            else
+                Items.LSPC_MC_C(end+1) = i;
+            end
+        end
+    end
+end
+end
+  
