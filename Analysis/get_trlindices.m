@@ -1,5 +1,5 @@
-function items = get_trlindices(EEG)
-
+function Items = get_trlindices(EEG)
+% inputs EEGlab structre and returns struct with trial indices
 Items.ISPC_MC_C =[];
 Items.ISPC_MC_I =[];
 Items.ISPC_MI_C =[];
@@ -36,9 +36,9 @@ for i=1:EEG.trials
             end
         elseif EEG.epoch(i).eventanalysetype{onset} == "main_con"
             if EEG.epoch(i).eventcongruency{onset} == "incongruent"
-                Items.LSPC_MC_I(end+1) = i;
+                Items.ISPC_MC_I(end+1) = i;
             else
-                Items.LSPC_MC_C(end+1) = i;
+                Items.ISPC_MC_C(end+1) = i;
             end
         end
     end
