@@ -20,6 +20,7 @@ library(tictoc)
 library(extraDistr) # more distributions
 library(haven)
 library(purrr)
+library(hypr)
 ```
 
 ## Generate data
@@ -192,97 +193,8 @@ grand_mu_calc <- function(data, grand_mu, grand_sigma, subject_mu, item_mu, cong
 new_mu
 }
 
-lognormal_predictive_distributions <- function(data,
-                                               grand_mu, 
-                                               grand_sigma, 
-                                               congruency_mu, 
-                                               block_mu, 
-                                               group_mu){
-  map2_dfr(grand_mu, grand_sigma, congruency_mu,block_mu, group_mu, function(mu_s, sigma_s, con_s, blc_s, grp_s){
-    subject_mu <- rtnorm(60, 0, 0.5, a = 0)
-    item_mu <- rtnorm(8, 0, 0.5, a = 0)
-    grand_mu <- grand_mu_calc(
-      data = data,
-      grand_mu = mu_s, 
-      grand_sigma = sigma_s, 
-      subject_mu = subject_mu, 
-      item_mu = item_mu, 
-      congruency_mu = con_s, 
-      block_mu =  blc_s, 
-      group_mu = grp_s)
-    tibble(
-      grand_mu = grand_mu,
-      grand_sigma = sigma_s,
-      rt_pred = exp(rnorm(nrow(data), grand_mu, sigma_s)),
-      subj = data$subj,
-      item = data$item, 
-      group = data$group,
-      congruency = data$congruency,
-      Block_type = data$Block_type)
-  }, .id = "iter") %>%
-    # .id is always a string and
-    # needs to be converted to a number
-    mutate(iter = as.numeric(iter))
-}
-```
-
-```{r}
-mu_s <- 5.7
-sigma_s <- 0.14
-con_s <- 0.2
-blc_s <- 0.2
-grp_s <- 0.2
-
-
-abc <- function(data, mu_s, sigma_s, con_s, blc_s, grp_s){
-  print("mu_s is: ", mu_s)
-    subject_mu <- rtnorm(60, 0, 0.5, a = 0)
-    item_mu <- rtnorm(8, 0, 0.5, a = 0)
-    grand_mu <- grand_mu_calc(
-      data = data,
-      grand_mu = mu_s, 
-      grand_sigma = sigma_s, 
-      subject_mu = subject_mu, 
-      item_mu = item_mu, 
-      congruency_mu = con_s, 
-      block_mu =  blc_s, 
-      group_mu = grp_s)
-    tibble(
-      grand_mu = grand_mu,
-      grand_sigma = sigma_s,
-      rt_pred = exp(rnorm(nrow(data), grand_mu, sigma_s)),
-      subj = data$subj,
-      item = data$item,
-      group = data$group,
-      congruency = data$congruency,
-      Block_type = data$Block_type)
-  }
-a <- abc(data = layout_data_set, mu_s = mu_s, sigma_s = sigma_s, con_s = con_s, blc_s = blc_s, grp_s = grp_s)
-
-iter <- 10
-n_observations <- 16
-grand_mu <- rnorm(iter, 6, 1.5)
-grand_sigma <- rtnorm(iter, 0, 0.5, a = 0)
-congruency_mu <- rtnorm(iter, 0, 0.5, a = 0)
-group_mu      <- rtnorm(iter, 0, 0.5, a = 0)
-block_mu <- rtnorm(iter, 0, 0.5, a = 0)
-data <- layout_data_set
-grand_mu_calc <- function(data, grand_mu, grand_sigma, subject_mu, item_mu, congruency_mu, block_mu, group_mu){
-  new_mu <- grand_mu + data$group*group_mu + data$Block_type*block_mu + data$congruency*congruency_mu + subject_mu[data$subj] + item_mu[data$item]
-new_mu
-}
-
-
-# print_fun <- function(mus, sigmas, cons, blcks, groups){
-#   sprintf("mu is %f, sigma is %f, cons is %f, blcks is %f, groups is %f", mus, sigmas, cons, blcks, groups)
-# }
-# pmap(dist_params,print_fun)
-
-dist_params <- list(mus = grand_mu, sigmas = grand_sigma, cons = congruency_mu, blcks = block_mu, groups = group_mu)
-
-tic()
-a <- pmap_dfr(dist_params, function(mus, sigmas, cons, blcks, groups){
-  print_fun(mus, sigmas, cons, blcks, groups)
+lognormal_prior_predictive_distributions <- function(dist_params, data){
+  pmap_dfr(dist_params, function(mus, sigmas, cons, blcks, groups){
   subject_mu <- rtnorm(60, 0, 0.5, a = 0)
   item_mu <- rtnorm(8, 0, 0.5, a = 0)
   grand_mu <- grand_mu_calc(
@@ -305,11 +217,8 @@ a <- pmap_dfr(dist_params, function(mus, sigmas, cons, blcks, groups){
     Block_type = data$Block_type)
 }, .id = "iter") %>%
   mutate(iter = as.numeric(iter))
-toc()
-
-sum(distinct(a, grand_mu))
+}
 ```
-
 
 
 Now that we have the function to generate data, let us try our hand at
@@ -317,83 +226,251 @@ Now that we have the function to generate data, let us try our hand at
 # First generate sample from the specified prior
 iter <- 10
 n_observations <- 16
-grand_mu <- rnorm(iter, 6, 1.5)
-grand_sigma <- rtnorm(iter, 0, 0.5, a = 0)
+grand_mu <- rnorm(iter, 5.5, 1.5)
+grand_sigma <- rtnorm(iter, 0, 0.8, a = 0)
 congruency_mu <- rtnorm(iter, 0, 0.5, a = 0)
 group_mu      <- rtnorm(iter, 0, 0.5, a = 0)
 block_mu <- rtnorm(iter, 0, 0.5, a = 0)
+data <- layout_data_set
+params <- list(mus = grand_mu, sigmas = grand_sigma, cons = congruency_mu, blcks = block_mu, groups = group_mu)
 
-# next let us generate some samples
-# tic()
-# prior_predictive_samples_old <- NumericalStroop_rt_fun(
-#   n_observations = n_observations, 
-#   grand_mu = grand_mu, 
-#   grand_sigma = grand_sigma, 
-#   congruency_mu = congruency_mu, 
-#   block_mu = block_mu, 
-#   group_mu = group_mu
-# ) 
-# toc()
 tic()
-prior_predictive_samples_new <- lognormal_predictive_distributions(data = layout_data_set,
-                                               grand_mu = grand_mu, 
-                                               grand_sigma = grand_sigma, 
-                                               congruency_mu = congruency_mu, 
-                                               block_mu = block_mu, 
-                                               group_mu = group_mu
-                                               )
+prior_predictive_samples_new <- lognormal_prior_predictive_distributions(dist_params = params,
+                                                                         data=layout_data_set)
 toc()
 ```
 
 Now let us plot one resulting distribution
 
 ```{r}
-one_iter = prior_predictive_samples %>% 
-  filter(iter ==1) %>%
-  mutate(congruency = as_factor(congruency))
-ggplot(data = one_iter, aes(rt_pred, fill = congruency)) +
-   geom_density(aes(group = congruency), alpha = 0.5) +
+ prior_predictive_samples_new %>% 
+  filter(iter <= 18) %>%
+  mutate(congruency = as_factor(congruency)) %>%
+  ggplot(aes(rt_pred)) +
+   geom_histogram( alpha = 0.5) +
   scale_fill_brewer(palette="Set3") +
-  xlab("Reaction Time") + ggtitle("Distribution Fake Reaction Time") +
-  theme()
+  xlab("Reaction Time") + ggtitle("Distribution Simulated Reaction Time") +
+  theme() + xlim(c(0, 15000)) + facet_wrap(~iter, ncol = 3)
 
 ```
-Plot min, max, mean and median parameters of all simulations to get a feel for the priors
+From just looking at one plot, I get the feeling that the overall approach looks reasonable, but the individual estimates likely overestimate the actual effect size. Next we plot summary statistics for all datasets:
+
+```{r}
+
+sum_vars <- c("rt_pred")
+prior_predictive_samples_new %>%
+  group_by(iter) %>%
+  summarise(median_RT = median(rt_pred), mean_RT = mean(rt_pred), min_RT = min(rt_pred), max_RT = max(rt_pred)) %>%
+  select(median_RT,  mean_RT, min_RT) %>%
+  pivot_longer(., cols = c(median_RT,  mean_RT, min_RT), names_to = "measure", values_to = "rt") %>%
+  ggplot(aes(rt)) +
+  geom_histogram() +
+  facet_grid(rows = vars(measure)) + xlim(c(0, 10000))
+
+
+```
+So it does sort of seam like most estimates are in the right ball park in terms of median and mean. Max values unfortunately are off the chart. Ideally I would want smaller estimates - however on the log scale - I find it quite hard to set regularizing priors - as these depend on other parameter in my sample. Hence I will stop here for now and define my model.
+
+
 
 Glancing at one Dataset
 
-Note this did not work at all - I would rather want to see the distribution of minimum, maximum and mean values as an indicator of the appropriateness of the selected priors
-```{r}
-ggplot(data = prior_predictive_samples , aes(x=rt_pred)) + geom_density(aes(group=iter)) + xlim(c(0, 4600))
 
+# Defining Contrasts
+
+Next we define the contrasts that we would like to analyze using the Hypr package. We will exclude the group factor so that we get individual interactions for each group and are better able to interpret the tripple interaction effect.
+```{r, include=FALSE}
+StroopCon <- hypr(
+  Con_CO = (Bcon_C_CO + Binc_C_CO)/2 ~ (Bcon_I_CO + Binc_I_CO)/2, # main effect Congruence healthy controls
+  Con_PD = (Bcon_C_PD + Binc_C_PD)/2 ~ (Bcon_I_PD + Binc_I_PD)/2, # main effect Congruence patients with Parkinson
+  Blc_CO = (Bcon_C_CO + Bcon_I_CO)/2 ~ (Binc_C_CO + Binc_I_CO)/2, # main effect Block healthy controls
+  Blc_PD = (Bcon_C_PD + Bcon_I_PD)/2 ~ (Binc_C_PD + Binc_I_PD)/2, # main effect Block patients with Parkinson
+  Blc_Con_CO = (Bcon_C_CO - Bcon_I_CO)/2 ~ (Binc_C_CO - Binc_I_CO)/2, # interaction Block Congruence healthy controls
+  Blc_Con_PD = (Bcon_C_PD - Bcon_I_PD)/2 ~ (Binc_C_PD - Binc_I_PD)/2, # interaction Block Congruence patients with P´arkinson
+  #Grp_Blc_Con = (Bcon_C_CO - Bcon_I_CO - Binc_C_CO + Binc_I_CO) ~ (Bcon_C_PD - Bcon_I_PD - Binc_C_PD + Binc_I_PD), # this one is not independent thus included
+  levels = c("Bcon_C_CO", "Bcon_I_CO", "Binc_C_CO", "Binc_I_CO", "Bcon_C_PD", "Bcon_I_PD", "Binc_C_PD", "Binc_I_PD")
+)
+StroopCon
 ```
+Okay, so we have the hypotheses we want to test nailed down - next we want to set up the model and analyzed some bit of simulated data to see if our model can identify the parameter we are interested. First we have to generate the data (use a bit more constrained priors), and generate the factor which we use to generate the hypothesis matrix.
+```{r}
+set.seed(12223)
+
+iter <- 1
+n_observations <- 16
+grand_mu <- rnorm(iter, 5.5, 1)
+grand_sigma <- rtnorm(iter, 0, 0.5, a = 0)
+congruency_mu <- rtnorm(iter, 0.2, 0.1, a = 0)
+group_mu      <- rtnorm(iter, 0.3, 0.1, a = 0)
+block_mu <- rtnorm(iter, 0.1, 0.1, a = 0)
+data <- layout_data_set
+params <- list(mus = grand_mu, sigmas = grand_sigma, cons = congruency_mu, blcks = block_mu, groups = group_mu)
+
+tic()
+prior_predictive_samples_new <- lognormal_prior_predictive_distributions(dist_params = params,
+                                                                         data=layout_data_set)
+toc()
+
+# generate contrast factor
+prior_predictive_dataset <- prior_predictive_samples_new %>%
+  mutate(Contrast_F = case_when(
+    group == 0 & congruency == 0 & Block_type == 0 ~ "Bcon_C_CO",
+    group == 0 & congruency == 0 & Block_type == 1 ~ "Binc_C_CO",
+    group == 0 & congruency == 1 & Block_type == 0 ~ "Bcon_I_CO",
+    group == 0 & congruency == 1 & Block_type == 1 ~ "Binc_I_CO",
+    group == 1 & congruency == 0 & Block_type == 0 ~ "Bcon_C_PD",
+    group == 1 & congruency == 0 & Block_type == 1 ~ "Binc_C_PD",
+    group == 1 & congruency == 1 & Block_type == 0 ~ "Bcon_I_PD",
+    group == 1 & congruency == 1 & Block_type == 1 ~ "Binc_I_PD"
+    )) %>%
+  mutate(Contrast_F  = as_factor(Contrast_F)) 
+
+# we have to create the contrast matrix first - ordering of levels for hypr must correspond to the ordering in the levels of the factor 
+StroopCon <- hypr(
+  Con_CO = (Bcon_C_CO + Binc_C_CO)/2 ~ (Bcon_I_CO + Binc_I_CO)/2, # main effect Congruence healthy controls
+  Con_PD = (Bcon_C_PD + Binc_C_PD)/2 ~ (Bcon_I_PD + Binc_I_PD)/2, # main effect Congruence patients with Parkinson
+  Blc_CO = (Bcon_C_CO + Bcon_I_CO)/2 ~ (Binc_C_CO + Binc_I_CO)/2, # main effect Block healthy controls
+  Blc_PD = (Bcon_C_PD + Bcon_I_PD)/2 ~ (Binc_C_PD + Binc_I_PD)/2, # main effect Block patients with Parkinson
+  Blc_Con_CO = (Bcon_C_CO - Bcon_I_CO)/2 ~ (Binc_C_CO - Binc_I_CO)/2, # interaction Block Congruence healthy controls
+  Blc_Con_PD = (Bcon_C_PD - Bcon_I_PD)/2 ~ (Binc_C_PD - Binc_I_PD)/2, # interaction Block Congruence patients with Parkinson
+  #Grp_Blc_Con = (Bcon_C_CO - Bcon_I_CO - Binc_C_CO + Binc_I_CO) ~ (Bcon_C_PD - Bcon_I_PD - Binc_C_PD + Binc_I_PD), # this one is not independent thus included
+  levels = levels(prior_predictive_dataset$Contrast_F)
+)
+StroopCon
+
+# assign the generated contrast matrix to our new factor
+contrasts(prior_predictive_dataset$Contrast_F) <- contr.hypothesis(StroopCon)
+
+contrasts(prior_predictive_dataset$Contrast_F)    
+```
+Great, so the dataset is ready, contrasts have been defined. Lets start modelling!
+
+
+
+
 So This does not seem to be working as intended. My Prior seems to be allow for quite a bit of variance. Nevertheless, let us fit a model to my fake data with brms
 ```{r, include=FALSE}
-fit_artif_dat <- brm( rt ~ 1 + congruency,
-                      data = artif_dat,
+fit_artif_dat <- brm( rt_pred ~ 1 + Contrast_F + (1|subj) + (1|item),
+                      data = prior_predictive_dataset,
                      family = lognormal(),
                      prior = c(
                        prior(normal(6, 1.5), class = Intercept),
                        prior(normal(0,1), class = sigma),
-                       prior(normal(0,1), class = b, coef = congruency)
+                       prior(normal(0,1), class = b)
                      )
                      )
+save(fit_artif_dat, file = "fit_artif_dat.rda")
 ```
 
 Next get a summary of the parameter:
 ```{r}
-posterior_summary(fit_artif_dat)[, c("Estimate", "Q2.5", "Q97.5")]
-plot(fit_artif_dat)
+load(file = "fit_artif_dat.rda")
+fit_artif_dat
 ```
-First things first - the Bayesian model beautifully recovered the parameter we used to generate the data. But since the parameter are on the logscale, let us transform them back to the millisecond scale for the intercept.
+Let us see whether the predicted data fits the "real data" well.
 
 ```{r}
-mu_samples <- exp(as_draws_df(fit_artif_dat)$b_Intercept)
-ggplot(data = tibble(rt =mu_samples), aes(rt)) +
-  geom_density() + xlab("Time in ms") + ggtitle("Mean Reaction Time")
-c(mean_rt = mean(mu_samples), quantile(mu_samples, c(0.025, 0.975)))
+pp_check(fit_artif_dat, ndraws = 100) 
+```
+Check whether the predicted minimum fits well with the observed minima, maxima and median:
+
+```{r}
+pp_check(fit_artif_dat, type = "stat", stat = "min")
+pp_check(fit_artif_dat, type = "stat", stat = "max")
+pp_check(fit_artif_dat, type = "stat", stat = "median")
+```
+
+Plot the parameter distributions
+```{r}
+mcmc_dens(fit_artif_dat, pars = variables(fit_artif_dat)[1:10])
+```
+Posterior Variable fit
+```{r, include = FALSE}
+posterior_summary(fit_artif_dat)
+```
+Next let us calculate the median effects in milliseconds
+```{r}
+alpha_samples <- as_draws_df(fit_artif_dat)$b_Intercept
+congruence_CO <- as_draws_df(fit_artif_dat)$b_Contrast_FCon_CO 
+congruence_PD <- as_draws_df(fit_artif_dat)$b_Contrast_FCon_PD 
+Block_CO      <- as_draws_df(fit_artif_dat)$b_Contrast_FBlc_CO
+Block_PD      <- as_draws_df(fit_artif_dat)$b_Contrast_FBlc_PD
+ConBlock_CO   <- as_draws_df(fit_artif_dat)$b_Contrast_FBlc_Con_CO
+ConBlock_PD   <- as_draws_df(fit_artif_dat)$b_Contrast_FBlc_Con_PD
+
+
+congruence_ms_CO <-  exp(alpha_samples-0.5*congruence_CO) - exp(alpha_samples+0.5*congruence_CO)
+congruence_ms_PD <-  exp(alpha_samples-0.5*congruence_PD) - exp(alpha_samples+0.5*congruence_PD)
+block_ms_CO      <-  exp(alpha_samples-0.5*Block_CO) - exp(alpha_samples+0.5*Block_CO)
+block_ms_PD      <-  exp(alpha_samples-0.5*Block_PD) - exp(alpha_samples+0.5*Block_PD)
+ConBlock_CO      <-  exp(alpha_samples-0.5*ConBlock_CO) - exp(alpha_samples+0.5*ConBlock_CO)
+ConBlock_PD      <-  exp(alpha_samples-0.5*ConBlock_PD) - exp(alpha_samples+0.5*ConBlock_PD)
+Diff_int         <-  ConBlock_CO - ConBlock_PD # Median difference in the interaction effects
+
+ggplot(data = tibble(rt =congruence_ms_CO), aes(rt)) +
+  geom_density() + xlab("Time in ms") + ggtitle("Mean Difference Congruence_Old Reaction Time")
+c(median_rt_diff = mean(congruence_ms_CO), quantile(
+  congruence_ms_CO, c(0.025, 0.975)))
+
+ggplot(data = tibble(rt =Diff_int), aes(rt)) +
+  geom_density() + xlab("Time in ms") + ggtitle("Mean Difference Interaction Reaction Time")
+c(median_rt_diff = mean(Diff_int), quantile(Diff_int, c(0.025, 0.975)))
 
 ```
+Although we did get some results for the marginal interaction effects in milli-seconds (or rather I calculated them by hand), I feel that they are wrong. I think it is not possible to calculate them without taking the interaction effects into consideration. In my eyes it might be more appropriate to calculate the marginal means for each possible condition e.g.: 
+$$CongruentBlock1CO = \alpha + \beta_{congruenceCO}*-0.5 +\beta_{blockCO}*-0.5 + \beta_ {interactionCO}*-0.5$$
+$$IncongruentBlock1CO = \alpha + \beta_{congruenceCO}*0.5 +\beta_{blockCO}*-0.5 + \beta_ {interactionCO}*-0.5$$
+$$CongruentBlock2CO = \alpha + \beta_{congruenceCO}*-0.5 +\beta_{blockCO}*0.5 + \beta_ {interactionCO}*0.5$$
+$$IncongruentBlock2CO = \alpha + \beta_{congruenceCO}*0.5 +\beta_{blockCO}*0.5 + \beta_ {interactionCO}*0.5$$
+The my marginal medianan interaction effect would be:
+
+$$ MM_{Interaction} = (CongruentBlock1CO -IncongruentBlock1CO) - (CongruentBlock2CO -IncongruentBlock2CO) $$
+Same goes for the PD group and only the could I interpret the difference as the difference in interaction effects.
+
+# Integrate Posterior Information in the priors of the next model
+For the next model we have to somehow integrate information from the posterior, into the prior of the next model. In order to properly do that we have to define a prior for each individual contrast. To understand how to do that we first get a summary of the priors we used in the previous model and now make them explicit in the second model.
+
+```{r}
+# get model parameters used before and naming conventions
+prior_summary(fit_artif_dat)
+
+# write down priors
+prior_informed <- c(
+  prior(normal(6, 1.5), class = Intercept),
+                       prior(normal(0,1), class = sigma),
+                       prior(normal(0,1), class = b, coef = Contrast_FBlc_CO),
+                       prior(normal(0,1), class = b, coef = Contrast_FBlc_PD),
+                       prior(normal(0,1), class = b, coef = Contrast_FCon_CO),
+                       prior(normal(0,1), class = b, coef = Contrast_FCon_PD),
+                       prior(normal(0,1), class = b, coef = Contrast_FBlc_Con_CO),
+                       prior(normal(0,1), class = b, coef = Contrast_FBlc_Con_PD),
+                       prior(normal(0, 3), class = sd, coef = Intercept, group = subj),
+                       prior(normal(0, 20), class = sd, coef = Intercept, group = item)
+)
+
+informed_artif_dat <- brm( rt_pred ~ 1 + Contrast_F + (1|subj) + (1|item),
+                      data = prior_predictive_dataset,
+                     family = lognormal(),
+                     prior = prior_informed,
+                     warmup = 2000,
+                     iter = 20000, # 20000 is the limit necessary for bridge sampling
+                     save_pars = save_pars(all = TRUE), # must be set to true for bridgesampling
+                     )
+save(informed_artif_dat, file = "fit_artif_dat.rda")
+
+# to calculate the bayes factor use the following syntax:
+margLogLik_mod1 <- bridge_sampler(fit_N400_h_linear, silent = TRUE)
+margLogLik_mod2 <- bridge_sampler(fit_N400_h_null, silent = TRUE)
+# the calculate the Bayesfactor
+BF_ln <- bayes_factor(margLogLik_mod1, margLogLik_mod2)
+# Can also be computed by hand, first calculate the difference of the log-liklihoods (same as division), then exponentiate the differences 
+
+
+
+```
+## Note to self: at this point it would probably make sense to consider if we want include random slopes for our effects for each participant and perhaps subjects and items
+
+
 ## Notes for in between
 
 For the model we only have to estimate the parameter for the partial pooling parameter - Hence I do not need an estimate for every single participant - but instead can use the estimate I get from my Inducer parameter. I will make it not 100% informative but only use it to restrict the range of parameter
