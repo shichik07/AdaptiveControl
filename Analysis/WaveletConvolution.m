@@ -34,6 +34,10 @@ eegl                         = '/home/jules/Dropbox/PhD_Thesis/EEG_Labor/EEG_Sof
 % set directories
 dirs.home                    = '/media/jules/DriveJules/AdaptiveControl/Data/FrequencyData/'; %hier habe ich das Gruppenlaufwerk gespeichert - du müsstest hier deinen Speicherort für die Daten eintragen
 dirs.eegsave                 = '/media/jules/DriveJules/AdaptiveControl/Data/FrequencyData/'; % hier Ordner zum Speichern der Ergebenisse - im Gruppenlaufwerk unter PipelineValidate zu finden
+dirs.functions               = '/home/jules/Dropbox/PhD_Thesis/Adaptive_Control/Analysis/Analysis/AdaptiveControl/Analysis';
+addpath(dirs.functions) 
+
+
 
 %git directory name for me
 %  /C/Users/doex9445/Dateien/Julius/AdaptiveControl/tVNS-Project
@@ -50,6 +54,9 @@ Participant_IDs              = {Participant_IDs(:).name};
 Part_N                       = length(Participant_IDs); %number of participants
 
 % INSERT PARTICIPANTS WE WISH NOT TO ANALYZE
+
+
+% Trial indices in question
 
 %add EEGLAB path and start the program
 addpath(eegl);
@@ -94,8 +101,8 @@ end
 
 % Baseline indices prior to fixation presentation in samples
 Baseline_time = [-0.400 -0.200]*EEG.srate;
-Baseline_time = [dsearchn(EEG.times',[-300]), dsearchn(EEG.times',[-100])]; 
-keep_time =  [dsearchn(EEG.times',[-200]), dsearchn(EEG.times',[1000])]; % time range we want to keep in the final dataset
+Baseline_time = dsearchn(EEG.times',[-300 -100]'); 
+keep_time =  dsearchn(EEG.times',[-200 1000]'); % time range we want to keep in the final dataset
 New_trial_time = -200/1000: 1/EEG.srate : 1000/1000;
 
 
@@ -111,7 +118,12 @@ for sub = 1:Part_N
     %load data set
     fileID              = strcat(Participant_IDs{sub}, '_epoched_freq.set'); %get file ID
     folderID            = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
-    EEG                 = pop_loadset('filename', fileID,'filepath',[folderID]); % load file    
+    EEG                 = pop_loadset('filename', fileID,'filepath',[folderID]); % load file
+    
+    Items = get_trlindices(EEG);
+    Fnames = fieldnames(Items);
+    
+    
     % Because our caluclation power is limited, we split the dataset into
     % approximately ten equally large chucks and perform the wavelet
     % convolution on each chuck seperately
@@ -130,24 +142,36 @@ for sub = 1:Part_N
     % correction we only intend to keep the interval from -200ms to 1s post
     %eegpower            = zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)), EEG.trials);
     %eegpower            = zeros(EEG.nbchan, freq_num , EEG.pnts, 10);
-    eegpower            = zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)), 10);
+    eegpower            = zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)), size(Items.name,1));
+    Power.ISPC_MC_C =zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)));
+    Power.ISPC_MC_I =zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)));
+    Power.ISPC_MI_C =zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)));
+    Power.ISPC_MI_I =zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)));
+    Power.LWPC_MC_C =zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)));
+    Power.LWPC_MC_I =zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)));
+    Power.LWPC_MI_C =zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)));
+    Power.LWPC_MI_I =zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)));
+    
+    
     %itpc                = zeros(EEG.nbchan, freq_num , EEG.pnts, EGG.trials);
     
     fprintf('Performing wavelet convolution on participant %s. \n',Participant_IDs{sub})
    
-    for bin = 1:bin_nr
-        fprintf('Analyzing trial subset %s of 10. \n',num2str(bin))
+    for con = 1:size(Fname,1)
+        trl_indices = getfield(Items, Fnames{con});
+        
+        fprintf('Analyzing trial subset %s of participant %s. \n',Fnames{con}, Participant_IDs{sub})
         % get bin data and parameter
-        bin_data = EEG.data(:,:,bounds(bin)+1:bounds(bin+1));
+        con_data = EEG.data(:,:,trl_indices);
        
-        bin_trl = size(bin_data,3); % nr of trials in this bin
+        con_trl = size(con_data,3); % nr of trials in this bin
         
         % reshape trials into one vector
-        bin_data = reshape(bin_data, [EEG.nbchan, EEG.pnts*bin_trl]);
+        con_data = reshape(con_data, [EEG.nbchan, EEG.pnts*con_trl]);
         
         % define convolution parameters (used from example code by Mike C. Cohen)
         n_wavelet            = length(time);
-        n_data               = EEG.pnts*bin_trl;
+        n_data               = EEG.pnts*con_trl;
         n_convolution        = n_wavelet+n_data-1;
         n_conv_pow2          = pow2(nextpow2(n_convolution));
         half_of_wavelet_size = (n_wavelet-1)/2;
@@ -162,7 +186,7 @@ for sub = 1:Part_N
         for chan = 1: EEG.nbchan
             for freq = 1:freq_num
                 % reshape trials into one vector
-                dat = reshape(squeeze(bin_data(chan,:,:)), [1, EEG.pnts*bin_trl]);
+                dat = reshape(squeeze(con_data(chan,:,:)), [1, EEG.pnts*con_trl]);
         
                 % get fft transform of wavav_eegpower2 = squeeze(old_power(1,:,:,2));
                 %fft_wavelet = fft( sqrt(1/(s(freq)*sqrt(pi))) * exp(2*1i*pi*freq_range(freq).*time) .* exp(-time.^2./(2*(s(freq)^2))) , n_conv_pow2 );
@@ -182,7 +206,7 @@ for sub = 1:Part_N
                 decomp = decomp(1:n_convolution);
                 decomp = decomp(half_of_wavelet_size + 1:end - half_of_wavelet_size);
                 % get original trial shape back
-                decomp = reshape(decomp, [EEG.pnts,bin_trl]);
+                decomp = reshape(decomp, [EEG.pnts,con_trl]);
                 
 %                 baseidx = dsearchn(EEG.times',[-500 -200]');
 %                 base_power = zeros(bin_trl,1);
@@ -201,12 +225,12 @@ for sub = 1:Part_N
                 
                 
                 % find indices per trial that need to be adjusted
-                fix_time = zeros(bin_trl, 2);
-                base_power = zeros(bin_trl,1);
+                fix_time = zeros(con_trl, 2);
+                base_power = zeros(con_trl,1);
                 baseidx = [];
                 
-                for trl = 1:bin_trl
-                    trl_idx = bounds(bin)+trl;
+                for trl = 1:con_trl
+                    trl_idx = trl_indices(trl);
                     event_lat = cell2mat(EEG.epoch(trl_idx).eventlatency);
                     baseidx = event_lat(dsearchn(event_lat',0)-1); % get the correct time stamp
                     baseidx = dsearchn(EEG.times',baseidx);% translate to indices
