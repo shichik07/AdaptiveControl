@@ -47,9 +47,8 @@ Participant_IDs              = dir(dirs.home);
 Participant_IDs              = Participant_IDs([Participant_IDs(:).isdir]); % remove all files (isdir property is 0)
 Participant_IDs              = Participant_IDs(~ismember({Participant_IDs(:).name},{'.','..'}));% remove '.' and '..'
 
-%remove PD 16, index 68 - no data available and was excluded from the
-%analysis
-Participant_IDs(68)          = []; 
+Participant_IDs          = Participant_IDs(~ismember({Participant_IDs(:).name},{'sub-PD_16'})); %remove PD 16, no data available and was excluded
+Participant_IDs          = Participant_IDs(~contains({Participant_IDs(:).name},{'sub-CY'})); %remove Data of young participants
 Participant_IDs              = {Participant_IDs(:).name};  
 Part_N                       = length(Participant_IDs); %number of participants
 
@@ -78,7 +77,7 @@ length_wavelet               = 4; % wavelet lengths will be 4 seconds
 wave_pnts                    = length_wavelet* EEG.srate;
 cycle_num                    = 6; % number of wavelet cycles
 freq_up                      = 40; % upper frequency limit in Hz
-freq_low                     = 6; %lower freqeuncy limit in Hz
+freq_low                     = 2; %lower freqeuncy limit in Hz
 freq_num                     = 30; %number of freqeuncies to be estimated
 freq_range                   = logspace(log10(freq_low), log10(freq_up), freq_num); %range of frequencies
 limit                        = 262144; % limit of what matrix operations my PC is capable of performing - important for zero padding
@@ -102,9 +101,11 @@ end
 
 
 % Baseline indices prior to fixation presentation in samples
+fix_baseline = [-0.2 -0.1]*EEG.srate;
 Baseline_time = dsearchn(EEG.times',[-300 -100]'); 
 keep_time =  dsearchn(EEG.times',[-200 1000]'); % time range we want to keep in the final dataset
 New_trial_time = -200/1000: 1/EEG.srate : 1000/1000;
+whole_trl_bsl =  dsearchn(EEG.times',[0 1000]');
 
 
 
@@ -128,24 +129,30 @@ for sub = 1:Part_N
     vals = zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)));
     vals = repmat({vals},1,length(Fnames));
     args=[Fnames';vals];
-    TF.power = struct(args{:}); % create a struct with matrix for each category for power values
-    TF.itpc  = struct(args{:}); % create a struct with matrix for each category for inter trial phase clustering values
+    TF.power_phase = struct(args{:}); % create a struct with matrix for each category for power values
+    TF.itpc_phase  = struct(args{:}); % create a struct with matrix for each category for inter trial phase clustering values
+    TF.power_non_phase = struct(args{:}); % create a struct with matrix for each category for power values
+    TF.itpc_non_phase  = struct(args{:}); % create a struct with matrix for each category for inter trial phase clustering values
     args2 = [Fnames';num2cell(structfun(@numel,Items))']; %get numer of items in case of weighting
     TF.Item_nr = struct(args2{:}); 
     TF.chanlocs = EEG.chanlocs; % keep channel information
+    TF.Frequencies = freq_range; % keep frequency information that are modelled 
+    TF.Time = New_trial_time; % keep time indices that we are tying to model
     
     fprintf('Performing wavelet convolution on participant %s. \n',Participant_IDs{sub})
-   
-    for con = 1:size(Fnames,1)
+    
+    % whole trial data baseline 
+    bp = squeeze(mean(EEG.data(:, whole_trl_bsl(1): whole_trl_bsl(2), :), 2));
+    bp = mean(bp,2);
+    for con = 8%1:size(Fnames,1)
         trl_indices = getfield(Items, Fnames{con});
         
         fprintf('Analyzing trial subset %s of participant %s. \n',Fnames{con}, Participant_IDs{sub})
         % get bin data and parameter
         con_data = EEG.data(:,:,trl_indices);
         con_trl = size(con_data,3); % nr of trials for this category
-        
-        % reshape trials into one vector
-        con_data = reshape(con_data, [EEG.nbchan, EEG.pnts*con_trl]);
+        % get condition specific ERP
+        con_ERP = mean(con_data,3);
         
         % define convolution parameters (used from example code by Mike C. Cohen)
         n_wavelet            = length(time);
@@ -161,61 +168,81 @@ for sub = 1:Part_N
         end
         
         % perform convolution on first data bin
-        for chan = 1: EEG.nbchan
-            for freq = 1:freq_num
-                % reshape trials into one vector
-                dat = reshape(squeeze(con_data(chan,:,:)), [1, EEG.pnts*con_trl]);
-        
-                % get fft of data
-                fft_dat = fft(dat, n_conv_pow2);
-                
-                fft_wavelet = fft(wavelets(freq,:),n_conv_pow2);
-                
-                % convolve data and wavelet
-                decomp = fft_dat.*fft_wavelet;
-                
-                % transform back
-                decomp = ifft(decomp);
-                decomp = decomp(1:n_convolution);
-                decomp = decomp(half_of_wavelet_size + 1:end - half_of_wavelet_size);
-                % get original trial shape back
-                decomp = reshape(decomp, [EEG.pnts,con_trl]);
-
-                % extract itpc
-                %itpc(chan, freq, :) = abs(mean(exp(1i*angle(decomp)),2));
-                itpc = abs(mean(exp(1i*angle(decomp)),2));
-                TF.itpc.(Fnames{con})(chan,freq,:) = itpc(keep_time(1):keep_time(2)); %only keep period we are interested in
-                
-                % take mean of all trials, compute magnitude and square to
-                % get power
-                decomp = abs(decomp).^2;
-                
-                
-                % find indices per trial that need to be adjusted
-                fix_time = zeros(con_trl, 2);
-                base_power = zeros(con_trl,1);
-                baseidx = [];
-                
-                for trl = 1:con_trl
-                    trl_idx = trl_indices(trl);
-                    event_lat = cell2mat(EEG.epoch(trl_idx).eventlatency);
-                    baseidx = event_lat(dsearchn(event_lat',0)-1); % get the correct time stamp
-                    baseidx = dsearchn(EEG.times',baseidx);% translate to indices
-                    fix_time(trl,:) = baseidx + Baseline_time; %safe indices and subtract samples for baseline indices
-                    %base_power(trl) = mean(decomp(fix_time(trl,1): fix_time(trl,2), trl)); %baseline blank screen period
-                    base_power(trl) = mean(decomp(keep_time(1): keep_time(2), trl)); % baseline over trial period
-                    %base_power(trl) = mean(decomp(Baseline_time(1): Baseline_time(2), trl)); %baseline during fixation
+        for p_type = 1:2
+            if p == 2
+                fprintf('Analyzing trial non-phase-locked power in subset %s of participant %s. \n',Fnames{con}, Participant_IDs{sub})
+            else
+                fprintf('Analyzing trial phase-locked power in subset %s of participant %s. \n',Fnames{con}, Participant_IDs{sub})
+            for chan = 1: EEG.nbchan
+                for freq = 1:freq_num
+                    if p_type == 2
+                        dat = squeeze(con_data(chan,:,:)) - repmat(con_ERP(chan,:)', 1, size(con_data,3)); %subtract condition sepcific ERP from each trial
+                        dat = reshape(dat, [1, EEG.pnts*con_trl]); %reshape trial into vector
+                    else
+                        % reshape trials into one vector
+                        dat = reshape(squeeze(con_data(chan,:,:)), [1, EEG.pnts*con_trl]);
+                    end
+                    % get fft of data
+                    fft_dat = fft(dat, n_conv_pow2);
+                    
+                    fft_wavelet = fft(wavelets(freq,:),n_conv_pow2);
+                    
+                    % convolve data and wavelet
+                    decomp = fft_dat.*fft_wavelet;
+                    
+                    % transform back
+                    decomp = ifft(decomp);
+                    decomp = decomp(1:n_convolution);
+                    decomp = decomp(half_of_wavelet_size + 1:end - half_of_wavelet_size);
+                    % get original trial shape back
+                    decomp = reshape(decomp, [EEG.pnts,con_trl]);
+                    
+                    % extract itpc
+                    %itpc(chan, freq, :) = abs(mean(exp(1i*angle(decomp)),2));
+                    itpc = abs(mean(exp(1i*angle(decomp)),2));
+                    
+                    % take mean of all trials, compute magnitude and square to
+                    % get power
+                    decomp = abs(decomp).^2;
+                    
+                    
+                    % find indices per trial that need to be adjusted
+                    fix_time = zeros(con_trl, 2);
+                    base_power = zeros(con_trl,1);
+                    baseidx = [];
+                    
+                    for trl = 1:con_trl
+                        trl_idx = trl_indices(trl);
+                        event_lat = cell2mat(EEG.epoch(trl_idx).eventlatency);
+                        baseidx = event_lat(dsearchn(event_lat',0)-1); % get the correct time stamp
+                        baseidx = dsearchn(EEG.times',baseidx);% translate to indices
+                        fix_time(trl,:) = baseidx + Baseline_time; %safe indices and subtract samples for baseline indices
+                        %base_power(trl) = mean(decomp(fix_time(trl,1): fix_time(trl,2), trl)); %baseline blank screen period
+                        base_power(trl) = mean(decomp(whole_trl_bsl(1): whole_trl_bsl(2), trl)); % baseline over trial period
+                        %base_power(trl) = mean(decomp(Baseline_time(1): Baseline_time(2), trl)); %baseline during fixation
+                        %base_power(trl)  = bp(chan);
+                    end
+                    
+                    % perform baseline correction and convert to decible scale
+                    for trl = 1:con_trl
+                        temppower(:,trl) = 10*log10(decomp(:,trl)./base_power(trl));
+                    end
+                    
+                    if p_type == 2
+                        %save power in power-matrix
+                        TF.power_non_phase.(Fnames{con})(chan,freq,:) = mean(temppower(keep_time(1):keep_time(2),:),2);
+                        %save itpc in itpc-matrix
+                        TF.itpc_non_phase.(Fnames{con})(chan,freq,:) = itpc(keep_time(1):keep_time(2)); %only keep period we are interested in
+                    else
+                        %save power in power-matrix
+                        TF.power_phase.(Fnames{con})(chan,freq,:) = mean(temppower(keep_time(1):keep_time(2),:),2);
+                        %save itpc in itpc-matrix
+                        TF.itpc_phase.(Fnames{con})(chan,freq,:) = itpc(keep_time(1):keep_time(2)); %only keep period we are interested in
+                    end
+                    
                 end
-                
-                % perform baseline correction and convert to decible scale
-                for trl = 1:con_trl
-                    temppower(:,trl) = 10*log10(decomp(:,trl)./base_power(trl));
-                end
-                
-                %save in matrix
-                TF.power.(Fnames{con})(chan,freq,:) = mean(temppower(keep_time(1):keep_time(2),:),2);
+                clear decomp temppower fft_dat fft_wavelet dat
             end
-            clear decomp temppower fft_dat fft_wavelet dat
         end
     end
     % save power and itpc data, baseline correction will be performed
@@ -236,7 +263,8 @@ end
 
 % get average power over trials
 old_TF = TF;
-av_eegpower = TF.power.LWPC_MI_I;
+av_eegpower = TF.power_non_phase.LWPC_MI_I;
+av_eegpower = TF.power_phase.LWPC_MI_I - TF.power_non_phase.LWPC_MI_I;
 chan2use = 'Pz';
 chanidx = strcmpi(chan2use,{EEG.chanlocs.labels});
 power_sub = squeeze(av_eegpower(chanidx, :, :));
@@ -244,9 +272,9 @@ power_sub = squeeze(av_eegpower(chanidx, :, :));
 
 max_scale = max(power_sub,[], 'all') +0.5
 min_scale = min(power_sub,[], 'all') -0.5
-figure(8)
-contourf(New_trial_time,freq_range,power_sub,20,'linecolor','none')
-set(gca,'clim',[-5, 2],'yscale','log','ytick',logspace(log10(freq_low),log10(freq_up),6),'yticklabel',round(logspace(log10(freq_low),log10(freq_up),6)*10)/10)
+figure(5)
+contourf(New_trial_time,freq_range,power_sub,60,'linecolor','none')
+set(gca,'clim',[min_scale, max_scale],'yscale','log','ytick',logspace(log10(freq_low),log10(freq_up),6),'yticklabel',round(logspace(log10(freq_low),log10(freq_up),6)*10)/10)
 title('Power')
 colormap(jet)
 colorbar
@@ -278,28 +306,42 @@ title('Logarithmic frequency scaling')
 
 
 %% Tasks to be done
-
-% restrict Analysis to midfrontal channels for theta analysis for now.
-% There is no reason to perform analysis on all channels
-
-% epoch datasets with sufficient margins to have good time frequency
-% resolution
-
 % remove the ERP from the data - to get non-phase locked pertubations
 
-% always only use a chunk of trials small enough not to overload the
-% workspace (for fft we zeropad to the power of two, let us keep this
-% smaller for more efficient analyses)
+% Use the whole data baseline if possible - seems to be a computational
+% problem as the dataset is too large to be processed in this manner though
 
 % perhaps focus on a sub analysis in the theta band to look at scalp
 % distribution for all electrodes midfrontal (Fz, FC1, FCz, FC2, Cz) or
 % (AFz, F1, Fz, F2, FC1, FCz, FC2.), for the latter see https://www.nature.com/articles/s41598-021-95631-1
 
-% restore online reference - which means the analysis has to be done
-% again... that might be a task for later
+% Select a proper baseline - compare baseline analyses with a baseline over
+% the whole trial and a baseline period during fixation. Use a baseline
+% that goes over the whole task dataset - not a condition specific baseline
 
+A = zeros(9,2,3);sub                          = 3;
+fileID                       = strcat(Participant_IDs{sub}, '_epoched_freq.set'); %get file ID
+folderID                     = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
+EEG                          = pop_loadset('filename', fileID,'filepath',[folderID]); % load file
+% cd('/home/jules/Dropbox/PhD_Thesis/Studying/NeuralTimesSeries')
+% load sampleEEGdata
+% 
 
-A = zeros(9,2,3);
+% Define params wavelet
+length_wavelet               = 4; % wavelet lengths will be 4 seconds
+wave_pnts                    = length_wavelet* EEG.srate;
+cycle_num                    = 6; % number of wavelet cycles
+freq_up                      = 40; % upper frequency limit in Hz
+freq_low                     = 2; %lower freqeuncy limit in Hz
+freq_num                     = 30; %number of freqeuncies to be estimated
+freq_range                   = logspace(log10(freq_low), log10(freq_up), freq_num); %range of frequencies
+limit                        = 262144; % limit of what matrix operations my PC is capable of performing - important for zero padding
+bin_nr                       = 10; %number of bins in which we analyze the data
+
+% time vector for wavlet (-2:2s)
+time                         = -wave_pnts/EEG.srate/2: 1/EEG.srate : wave_pnts/EEG.srate/2;
+%vector of standard deviations per frequency
+s                            = cycle_num./(2*pi*freq
 B = ones (9,2);
 C = ones (9,2)+1;
 
