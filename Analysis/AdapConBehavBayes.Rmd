@@ -1,11 +1,11 @@
 ---
-title: "Adaptive Control Behavior Bayesian Exploration"
+title: "Adaptive Control Behavior Bayesian Analysis"
 author: "Julius Kricheldorff"
 date: "3/30/2022"
 output: html_document
 ---
 
-# Bayesian explorative analysis of the EEG data
+# Analysis of the behavioral data using Bayesian mixed-effect models
 
 Load packages
 ```{r setup, include=FALSE}
@@ -23,11 +23,77 @@ library(purrr)
 library(hypr)
 ```
 
+## Brief Task and hypothesis description
+
+The task was constructed as follows:
+
+### Rationale
+
+Participants saw two numbers on the screen and were tasked to judge the numerically larger number. Numbers were varying in physical display size on screen. The larger numerically larger number could either be larger- (**congruent**) or smaller (**incongruent**) than the other number. The difference in reaction time between answering correctly to congruent and incongruent pairings is a variation of the classical Stroop effect in Psychology, thought to reflect the recruitment of **cognitive control** functions.
+
+We use this paradigm to test **adaptive control** effects in healthy participants and participants with Parkinson's disease. Adaptive control is the ability to regulate the amount of cognitive control that is employed according to context. For instance in a context were you would expect high conflict cognitive control resources would need to be higher compared to a context were little conflict is expected. There are two modes by which this can happen - **proactively** and **reactively**. The exact details would be a bit too much information - but these are the target of our investigation. 
+
+### Task Manipulation
+
+*Basic task design*: Participants completed a numerical Stroop task judging numerical size with congruence manipulated as described above. The task had in total about 1100 repetitions. Repetitions were separated into blocks (in total 8), so participants did approximately 120 repetitions an then took a little break. To manipulate **proactive control** two of the blocks had a higher proportion of congruent trials than incongruent trials and two of the blocks had a higher proportion of congruent trials than incongruent trials. Here specifically the interaction between congruence and Block_type is how we operationalize the effect of proactive control on reaction times - That is in highly incongruent blocks we expect faster reaction times for incongruent items and the opposite in mainly incongruent blocks. In the remaining four blocks we did a similar manipulation to assess **reactive control**. This time not on the block-level, but the item level. Namely e.g. larger number pairs were mostly congurent and smaller number pairs were mostly incongruent.
+
+*Diagnostic and inducer Items*: A concern in the literature is that instead of employing cognitive resources, participants simply learn to associate the specific items with the respective congruency proportion - which in short would be a completely different mechanism. To avoid learning as a confound we used two different sets of items: **Inducer items** whose proportions in congruency (80/20) where manipulated systematically to induce adaptive control and **diagnostic items** which were presented equally often congruent and incongruent. Most of the items presented to the participants were inducer items (I think, somewehere along the lines of 70/30). In total we have about 40 items per participant, per condition (i.e. proactiveControl - mainly congruent block - congrutent items, proactiveControl - mainly congruent block - incongrutent items.. and so forth). In the analysis only the diagnostic items will be considered
+
+*Hypotheses*: We are interested whether both proactive and reactive control are present in the Parkinsons and healthy control group (I personally believe so, although the literature on that is mixed). Hence we are interested in the interaction between congruency and block proactive control, as well as the interaction congruency and block reactive control. Secondly if we can identify the interactions we are interested if ther is a group difference between these interaction effects i.e. whether Parkinson patients show some kind of impairment to healthy controls.
+
+### Analysis Plan
+
+In theory both reaction time and accuracy data of our participants could be analyzed - however, the task was actually so simple that participants barely made any mistakes (ceiling effect). hence we focus only on the reaction times. As reaction times are not normally distributed use a mixed effect model with a log-normal distribution using brms. We have the following factors we are interested in:
+
+*Fixed Effects*
+
+* **Congruency** (congruent/incongruent)
+* **Group** (Parkinson/Control)
+* **BlockType** Proactive Control (mainly congruent/mainly incongruent)
+* **ItemType** Reactive Control (mainly congruent/mainly incongruent)
+
+and we are interested for each group in the interaction $Congruency*BlockType$ and $Congruency*ItemType$. And the difference in both for each group.
+
+*Random Effects*
+
+* Participant 
+* Items 
+
+My initial idea would be to perform two separate analyses for each effect (proactive and reactive control respectively). With contrasts for each group and interaction separately (see later in the file). For the random effects I currently considered only random intercepts. 
+d
+Although we do not use the inducer items for the analysis, I feel like it is a waste of data not to consider them at all. Fixed effects like Congruency, and Group, as well as random effects such as item and participant should not very depending on whether we use the diagnostic or inducer items. Also I would not expect larger effects of proactive or reactive control in the diagnostic items compared to the inducer items. As such an analysis of the inducer items would give use a good indication for an upper limit of the control effects.
+
+Based on these considerations I want to use a Bayesian mixed effects regression which I first use to fit the inducer data and whose estimates I use to create **informed priors** (for my fixed effects Congruency, group and random effects item and participant) or **regularizing priors** (Block_type and interaction effects - use the upperbound estimate for a prior in both directions). The informed priors I will use in a second step to fit the diagnostic item data
+
+In sum
+
+1. Identify a set of plausible priors for the analysis of the inducer items (see below) 
+
+2. Fit the model to the inducer items
+
+3. Use model estimates for **informed priors** on factor group, congruency, random effects and **regularizing priors** for the main effect of block/itemType and both interaction effects
+
+4. For inference use Bayes Factors and BridgeSampling for the Main and interaction effects. As the difference between two interaction effect cannot be coded with contrasts I would use Rope/Equvalence testing to assess evidence for the null hypothesis of no difference.
+
+
+
+## Questions I have
+
+1. Is my contrast design (see further ahead) appropriate with regard to the questions I have in mind?
+
+2. Is it maybe more sensible to analyze both proactive an reactive interaction effects in one model, instead of two models? 
+
+3. To calculate the marginal median effects for my interaction am I correct in the assumption that I have to include the main effects? (I have an example written out further ahead)
+
+4. not a question, but thanks so much already!
+
 ## Generate data
+Before we look at the data, let us generate some data. Next slide is just for illustrative purposes.
 
-Before we look at the data, let us generate some data
 
-```{r cars}
+
+The Rest of this Rmd file is just me dabling with code, generating some data and sorting my ideas. Apologies for the mess beforehand! FYI since brms codes take quite a while to run they are not evaluated automatically.
+```{r}
 set.seed(4298)
 Sample_size<- 1112
 artif_dat <- tibble(rt = exp(rtnorm(Sample_size/2, 6.5, 0.5, a = 0))) %>%
@@ -47,7 +113,6 @@ ggplot(data = artif_dat, aes(rt,  fill = congruency)) +
 
 ```
 
-## Fit a brms model to our fake data
 
 We assume the following priors:
 
@@ -81,11 +146,11 @@ groups <- 2
 n_observations <- 16
 
 iter <- 1
-grand_mu <- rnorm(iter, 6, 1.5)
+grand_mu <- rnorm(iter, 6, 1)
 grand_sigma <- rnorm(iter, 0, 1)
-congruency_mu <- rnorm(iter, 0, 1)
-group_mu      <- rnorm(iter, 0, 1)
-block_mu <- rnorm(iter, 0, 1)
+congruency_mu <- rnorm(iter, 0, 0.5)
+group_mu      <- rnorm(iter, 0, 0.5)
+block_mu <- rnorm(iter, 0, 0.5)
 
 
 ```
@@ -226,11 +291,11 @@ Now that we have the function to generate data, let us try our hand at
 # First generate sample from the specified prior
 iter <- 10
 n_observations <- 16
-grand_mu <- rnorm(iter, 5.5, 1.5)
+grand_mu <- rnorm(iter, 6, 1)
 grand_sigma <- rtnorm(iter, 0, 0.8, a = 0)
-congruency_mu <- rtnorm(iter, 0, 0.5, a = 0)
-group_mu      <- rtnorm(iter, 0, 0.5, a = 0)
-block_mu <- rtnorm(iter, 0, 0.5, a = 0)
+congruency_mu <- rtnorm(iter, 0, 1, a = 0)
+group_mu      <- rtnorm(iter, 0, 1, a = 0)
+block_mu <- rtnorm(iter, 0, 1, a = 0)
 data <- layout_data_set
 params <- list(mus = grand_mu, sigmas = grand_sigma, cons = congruency_mu, blcks = block_mu, groups = group_mu)
 
@@ -250,7 +315,7 @@ Now let us plot one resulting distribution
    geom_histogram( alpha = 0.5) +
   scale_fill_brewer(palette="Set3") +
   xlab("Reaction Time") + ggtitle("Distribution Simulated Reaction Time") +
-  theme() + xlim(c(0, 15000)) + facet_wrap(~iter, ncol = 3)
+  theme() + xlim(c(0, 5000)) + facet_wrap(~iter, ncol = 3)
 
 ```
 From just looking at one plot, I get the feeling that the overall approach looks reasonable, but the individual estimates likely overestimate the actual effect size. Next we plot summary statistics for all datasets:
@@ -272,10 +337,6 @@ prior_predictive_samples_new %>%
 So it does sort of seam like most estimates are in the right ball park in terms of median and mean. Max values unfortunately are off the chart. Ideally I would want smaller estimates - however on the log scale - I find it quite hard to set regularizing priors - as these depend on other parameter in my sample. Hence I will stop here for now and define my model.
 
 
-
-Glancing at one Dataset
-
-
 # Defining Contrasts
 
 Next we define the contrasts that we would like to analyze using the Hypr package. We will exclude the group factor so that we get individual interactions for each group and are better able to interpret the tripple interaction effect.
@@ -292,7 +353,9 @@ StroopCon <- hypr(
 )
 StroopCon
 ```
+
 Okay, so we have the hypotheses we want to test nailed down - next we want to set up the model and analyzed some bit of simulated data to see if our model can identify the parameter we are interested. First we have to generate the data (use a bit more constrained priors), and generate the factor which we use to generate the hypothesis matrix.
+
 ```{r}
 set.seed(12223)
 
@@ -343,13 +406,9 @@ contrasts(prior_predictive_dataset$Contrast_F) <- contr.hypothesis(StroopCon)
 
 contrasts(prior_predictive_dataset$Contrast_F)    
 ```
-Great, so the dataset is ready, contrasts have been defined. Lets start modelling!
-
-
-
 
 So This does not seem to be working as intended. My Prior seems to be allow for quite a bit of variance. Nevertheless, let us fit a model to my fake data with brms
-```{r, include=FALSE}
+```{r, include=FALSE, eval=FALSE}
 fit_artif_dat <- brm( rt_pred ~ 1 + Contrast_F + (1|subj) + (1|item),
                       data = prior_predictive_dataset,
                      family = lognormal(),
@@ -363,33 +422,33 @@ save(fit_artif_dat, file = "fit_artif_dat.rda")
 ```
 
 Next get a summary of the parameter:
-```{r}
+```{r, eval=FALSE}
 load(file = "fit_artif_dat.rda")
 fit_artif_dat
 ```
 Let us see whether the predicted data fits the "real data" well.
 
-```{r}
+```{r, eval=FALSE}
 pp_check(fit_artif_dat, ndraws = 100) 
 ```
 Check whether the predicted minimum fits well with the observed minima, maxima and median:
 
-```{r}
+```{r, eval=FALSE}
 pp_check(fit_artif_dat, type = "stat", stat = "min")
 pp_check(fit_artif_dat, type = "stat", stat = "max")
 pp_check(fit_artif_dat, type = "stat", stat = "median")
 ```
 
 Plot the parameter distributions
-```{r}
+```{r, eval=FALSE}
 mcmc_dens(fit_artif_dat, pars = variables(fit_artif_dat)[1:10])
 ```
 Posterior Variable fit
-```{r, include = FALSE}
+```{r, include = FALSE, eval=FALSE}
 posterior_summary(fit_artif_dat)
 ```
 Next let us calculate the median effects in milliseconds
-```{r}
+```{r, eval=FALSE}
 alpha_samples <- as_draws_df(fit_artif_dat)$b_Intercept
 congruence_CO <- as_draws_df(fit_artif_dat)$b_Contrast_FCon_CO 
 congruence_PD <- as_draws_df(fit_artif_dat)$b_Contrast_FCon_PD 
@@ -430,7 +489,7 @@ Same goes for the PD group and only the could I interpret the difference as the 
 # Integrate Posterior Information in the priors of the next model
 For the next model we have to somehow integrate information from the posterior, into the prior of the next model. In order to properly do that we have to define a prior for each individual contrast. To understand how to do that we first get a summary of the priors we used in the previous model and now make them explicit in the second model.
 
-```{r}
+```{r, eval=FALSE}
 # get model parameters used before and naming conventions
 prior_summary(fit_artif_dat)
 
