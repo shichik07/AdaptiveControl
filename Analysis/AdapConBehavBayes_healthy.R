@@ -11,7 +11,8 @@ library(tictoc)
 library(extraDistr) # more distributions
 library(haven)
 library(purrr)
-library(hypr)
+library(hypr) # package to generate contrasts
+library(chkptstanr) #package to interupt and restart sampling with stanr/brms
 
 # Set a seed for sake of reproducibility
 set.seed(33946)
@@ -93,12 +94,15 @@ prior_informed <- c(
   prior(normal(0, 3), class = sd, coef = Intercept, group = Item)
 )
 
-inducer_young <- brm( RT ~ 1 + Contrast_F + (1|Subject) + (1|Item),
+# brmsformula object
+m1 <- bf(RT ~ 1 + Contrast_F + (1|Subject) + (1|Item), family = lognormal())
+
+inducer_young <- chkpt_brms(formula = m1,
                            data = Data_y_inducer,
-                           family = lognormal(),
                            prior = prior_informed,
                            warmup = 2000,
-                           iter = 4000#, # 20000 is the limit necessary for bridge sampling
+                           iter = 4000, # 20000 is the limit necessary for bridge sampling
+                           iter_per_chkpt = 250, # after how many samples we save
                            #save_pars = save_pars(all = TRUE), # must be set to true for bridgesampling
 )
 save(informed_artif_dat, file = "fit_artif_dat.rda")
