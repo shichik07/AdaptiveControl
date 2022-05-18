@@ -7,13 +7,14 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(dbplyr)
 library(tidyverse)
 library(brms)
 library(lme4)
 library(car)
 library(optimx)
 ```
-
+remove.packages('dbplyr', '/home/jules/R/x86_64-pc-linux-gnu-library/4.1')
 ## Load Data
 ```{r}
 set.seed(33940)
