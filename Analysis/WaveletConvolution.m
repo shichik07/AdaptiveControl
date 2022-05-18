@@ -27,6 +27,10 @@
 
 %load eeg data
 
+% Workspace on Windows PC
+% /C/Users/doex9445/Dateien/Julius/AdaptiveControl/AdaptiveControl 
+
+
 clear all; close all; clc
 dbstop if error
 
