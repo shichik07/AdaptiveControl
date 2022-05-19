@@ -14,10 +14,17 @@
 clear all; close all; clc
 dbstop if error
 
-eegl                         = '/home/jules/Dropbox/PhD_Thesis/EEG_Labor/EEG_Software/eeglab2021.1';
+%Windows env file locations
+eegl                         = 'C:\Program Files\MATLAB\EEGSoftware\eeglab2022.0';
 % set directories
-dirs.home                    = '/media/jules/DriveJules/AdaptiveControl/Data/FrequencyData/'; %hier habe ich das Gruppenlaufwerk gespeichert - du müsstest hier deinen Speicherort für die Daten eintragen
-dirs.eegsave                 = '/media/jules/DriveJules/AdaptiveControl/Data/FrequencyData/'; % hier Ordner zum Speichern der Ergebenisse - im Gruppenlaufwerk unter PipelineValidate zu finden
+dirs.home                    = 'E:\AdaptiveControl\Data\FrequencyData\'; %hier habe ich das Gruppenlaufwerk gespeichert - du müsstest hier deinen Speicherort für die Daten eintragen
+dirs.eegsave                 = 'E:\AdaptiveControl\Data\FrequencyData\'; % hier Ordner zum Speichern der Ergebenisse - im Gruppenlaufwerk unter PipelineValidate zu finden
+
+% %Linux env file locations
+% eegl                         = '/home/jules/Dropbox/PhD_Thesis/EEG_Labor/EEG_Software/eeglab2021.1';
+% % set directories
+% dirs.home                    = '/media/jules/DriveJules/AdaptiveControl/Data/FrequencyData/'; %hier habe ich das Gruppenlaufwerk gespeichert - du müsstest hier deinen Speicherort für die Daten eintragen
+% dirs.eegsave                 = '/media/jules/DriveJules/AdaptiveControl/Data/FrequencyData/'; % hier Ordner zum Speichern der Ergebenisse - im Gruppenlaufwerk unter PipelineValidate zu finden
 
 %git directory name for me
 %  /C/Users/doex9445/Dateien/Julius/AdaptiveControl/tVNS-Project
@@ -26,11 +33,13 @@ dirs.eegsave                 = '/media/jules/DriveJules/AdaptiveControl/Data/Fre
 Participant_IDs              = dir(dirs.home);
 Participant_IDs              = Participant_IDs([Participant_IDs(:).isdir]); % remove all files (isdir property is 0)
 Participant_IDs              = Participant_IDs(~ismember({Participant_IDs(:).name},{'.','..'}));% remove '.' and '..'
+Participant_IDs              = Participant_IDs(~ismember({Participant_IDs(:).name},{'derivatives'}));
 
-%remove PD 16, index 68 - no dat available
-Participant_IDs(68)          = []; 
 Participant_IDs              = {Participant_IDs(:).name};  
 Part_N                       = length(Participant_IDs); %number of participants
+
+%Load a dataset of an old participant so we can use the full channel
+%location file
 
 % event onset codes
 onset =  {  'S 21'  'S 22'  'S 23'  'S 24'  'S 41'  'S 42'  'S 43' ...
@@ -48,9 +57,16 @@ eeglab
 
 for sub = 1:Part_N
     % get file location and load data
-    fileID                       = strcat(Participant_IDs{sub}, '_task-stroop_eeg_pruned_auto.set'); %get file ID
+    fileID                       = strcat(Participant_IDs{sub}, '_task-stroop_eeg_pruned.set'); %get file ID
     folderID                     = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
     EEG                          = pop_loadset('filename', fileID,'filepath',[folderID]); % load file
+    
+    % Load Old dataset for channel locations
+    EEG_OLD = pop_loadset('filename', strcat(fileID.name(1:end-5), '_testset.set'),'filepath',[pdest1]);
+    
+    %Interpolate removed channels
+    EEG = pop_interp(EEG, EEG_OLD.chanlocs, 'spherical');
+    
     
     % load data
     EEG = pop_epoch( EEG,onset, epoch_dur, 'newname', 'Epochs for wavelet convolution', 'epochinfo', 'yes');
