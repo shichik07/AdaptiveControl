@@ -19,7 +19,7 @@ eegl                         = 'C:\Program Files\MATLAB\EEGSoftware\eeglab2022.0
 % set directories
 dirs.home                    = 'E:\AdaptiveControl\Data\FrequencyData\'; %hier habe ich das Gruppenlaufwerk gespeichert - du müsstest hier deinen Speicherort für die Daten eintragen
 dirs.eegsave                 = 'E:\AdaptiveControl\Data\FrequencyData\'; % hier Ordner zum Speichern der Ergebenisse - im Gruppenlaufwerk unter PipelineValidate zu finden
-
+dirs.Julia                   = 'G:\Julia Ficke\AdaptiveControl\CleanData_EEG';
 % %Linux env file locations
 % eegl                         = '/home/jules/Dropbox/PhD_Thesis/EEG_Labor/EEG_Software/eeglab2021.1';
 % % set directories
@@ -38,20 +38,28 @@ Participant_IDs              = Participant_IDs(~ismember({Participant_IDs(:).nam
 Participant_IDs              = {Participant_IDs(:).name};  
 Part_N                       = length(Participant_IDs); %number of participants
 
+%add EEGLAB path and start the program
+addpath(eegl);
+eeglab
+
 %Load a dataset of an old participant so we can use the full channel
 %location file
+sub = 4;
+OldID                        = strcat(Participant_IDs{sub}, '_task-stroop_eeg_testset.set'); %get file ID
+OldFile                      = fullfile(dirs.Julia,Participant_IDs{sub}, 'eeg');%get folder ID
+EEG_OLD                      = pop_loadset('filename', OldID,'filepath',[OldFile]); % load file
+
+% Because this old file doesn't have the FCz location, we add this manually
+% here
+EEG_OLD = pop_chanedit(EEG_OLD, 'insert',64,'changefield',{64,'labels','FCz'},'changefield',{64,'theta','0'},'changefield',{64,'radius','0.127777777777778'},'changefield',{64,'X','0.390731128489274'},'changefield',{64,'Y','0'},'changefield',{64,'Z','0.920504853452440'},'changefield',{64,'sph_theta','0'},'changefield',{64,'sph_phi','67'},'changefield',{64,'sph_radius','1'},'changefield',{64,'type','EEG'},'setref',{'1:128','FCz'});
+EEG_OLD = pop_reref( EEG_OLD, [],'refloc',struct('labels',{'FCz'},'sph_radius',{1},'sph_theta',{0},'sph_phi',{67},'theta',{0},'radius',{0.12778},'X',{0.39073},'Y',{0},'Z',{0.9205},'type',{'EEG'},'ref',{'FCz'},'urchan',{[]},'datachan',{0}));
+
 
 % event onset codes
 onset =  {  'S 21'  'S 22'  'S 23'  'S 24'  'S 41'  'S 42'  'S 43' ...
     'S 44'  'S 61'  'S 62'  'S 63'  'S 64'  'S 81'  'S 82'  'S 83'  'S 84'  };
 epoch_dur = [-2  2];
 
-
-% INSERT PARTICIPANTS WE WISH NOT TO ANALYZE
-
-%add EEGLAB path and start the program
-addpath(eegl);
-eeglab
 
 %% Epoching
 
@@ -60,9 +68,6 @@ for sub = 1:Part_N
     fileID                       = strcat(Participant_IDs{sub}, '_task-stroop_eeg_pruned.set'); %get file ID
     folderID                     = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
     EEG                          = pop_loadset('filename', fileID,'filepath',[folderID]); % load file
-    
-    % Load Old dataset for channel locations
-    EEG_OLD = pop_loadset('filename', strcat(fileID.name(1:end-5), '_testset.set'),'filepath',[pdest1]);
     
     %Interpolate removed channels
     EEG = pop_interp(EEG, EEG_OLD.chanlocs, 'spherical');
