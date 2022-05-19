@@ -58,7 +58,7 @@ EEG_OLD = pop_reref( EEG_OLD, [],'refloc',struct('labels',{'FCz'},'sph_radius',{
 % event onset codes
 onset =  {  'S 21'  'S 22'  'S 23'  'S 24'  'S 41'  'S 42'  'S 43' ...
     'S 44'  'S 61'  'S 62'  'S 63'  'S 64'  'S 81'  'S 82'  'S 83'  'S 84'  };
-epoch_dur = [-2  2];
+epoch_dur = [-1.2  2];
 
 
 %% Epoching
