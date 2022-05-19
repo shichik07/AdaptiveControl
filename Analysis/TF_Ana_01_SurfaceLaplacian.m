@@ -22,7 +22,7 @@ Participant_IDs              = dir(dirs.home);
 Participant_IDs              = Participant_IDs([Participant_IDs(:).isdir]); % remove all files (isdir property is 0)
 Participant_IDs              = Participant_IDs(~ismember({Participant_IDs(:).name},{'.','..'}));% remove '.' and '..'
 Participant_IDs              = Participant_IDs(~ismember({Participant_IDs(:).name},{'derivatives'}));
-
+Participant_IDs          = Participant_IDs(~ismember({Participant_IDs(:).name},{'sub-PD_16'})); %remove PD 16, no data available and was excluded
 Participant_IDs              = {Participant_IDs(:).name};  
 Part_N                       = length(Participant_IDs); %number of participants
 
