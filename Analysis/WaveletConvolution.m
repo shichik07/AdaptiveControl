@@ -80,7 +80,7 @@ folderID                     = fullfile(dirs.home,Participant_IDs{sub});%get fol
 EEG                          = pop_loadset('filename', fileID,'filepath',[folderID]); % load file
 
 % resample to reduce the size of our dataset
-EEG = pop_resample( EEG, 125);
+%EEG = pop_resample( EEG, 125);
 
 % cd('/home/jules/Dropbox/PhD_Thesis/Studying/NeuralTimesSeries')
 % load sampleEEGdata
@@ -136,7 +136,7 @@ for sub = 1:Part_N
     folderID            = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
     EEG                 = pop_loadset('filename', fileID,'filepath',[folderID]); % load file
     % resample to reduce the size of our dataset
-    EEG = pop_resample( EEG, 125);
+    %EEG = pop_resample( EEG, 125);
 
 
     
@@ -145,32 +145,44 @@ for sub = 1:Part_N
     Fnames = fieldnames(Items); % get associated condition names
     
     % create struct where we save our averaged frequency condition data
-    vals = zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)), EEG.trials);
-    vals = repmat({vals},1,length(Fnames));
-    args=[Fnames';vals];
-    vals2 = zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)));
-    vals2 = repmat({vals2},1,length(Fnames));
-    args3 = [Fnames';vals2];
-    TF_phase.power = struct(args{:}); % create a struct with matrix for each category for power values
-    TF_phase.itpc  = struct(args3{:}); % create a struct with matrix for each category for inter trial phase clustering values
-%     TF_non_phase.power = struct(args{:}); % create a struct with matrix for each category for power values
-%     TF_non_phase.itpc  = struct(args3{:}); % create a struct with matrix for each category for inter trial phase clustering values
-    args2 = [Fnames';num2cell(structfun(@numel,Items))']; %get numer of items in case of weighting
-    TF_phase.Item_nr = struct(args2{:});
-%     TF_non_phase.Item_nr = struct(args2{:});
-    TF_phase.chanlocs = EEG.chanlocs; % keep channel information
-    TF_phase.Frequencies = freq_range; % keep frequency information that are modelled
-    TF_phase.Time = New_trial_time; % keep time indices that we are tying to model
-%     TF_non_phase.chanlocs = EEG.chanlocs; % keep channel information
-%     TF_non_phase.Frequencies = freq_range; % keep frequency information that are modelled
-%     TF_non_phase.Time = New_trial_time; % keep time indices that we are tying to model
-    
-    
-    clear vals args args2 % clear these to free up workspace
-    
+%     vals = zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)), EEG.trials);
+%     vals = repmat({vals},1,length(Fnames));
+%     args=[Fnames';vals];
+%     vals2 = zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)));
+%     vals2 = repmat({vals2},1,length(Fnames));
+%     args3 = [Fnames';vals2];
+%     TF_phase.power = struct(args{:}); % create a struct with matrix for each category for power values
+%     TF_phase.itpc  = struct(args3{:}); % create a struct with matrix for each category for inter trial phase clustering values
+% %     TF_non_phase.power = struct(args{:}); % create a struct with matrix for each category for power values
+% %     TF_non_phase.itpc  = struct(args3{:}); % create a struct with matrix for each category for inter trial phase clustering values
+%     args2 = [Fnames';num2cell(structfun(@numel,Items))']; %get numer of items in case of weighting
+%     TF_phase.Item_nr = struct(args2{:});
+% %     TF_non_phase.Item_nr = struct(args2{:});
+%     TF_phase.chanlocs = EEG.chanlocs; % keep channel information
+%     TF_phase.Frequencies = freq_range; % keep frequency information that are modelled
+%     TF_phase.Time = New_trial_time; % keep time indices that we are tying to model
+% %     TF_non_phase.chanlocs = EEG.chanlocs; % keep channel information
+% %     TF_non_phase.Frequencies = freq_range; % keep frequency information that are modelled
+% %     TF_non_phase.Time = New_trial_time; % keep time indices that we are tying to model
+%     
+%     
+%     clear vals args args2 % clear these to free up workspace
+%     
     fprintf('Performing wavelet convolution on participant %s. \n',Participant_IDs{sub})
     
     for con = 1:length(Fnames)
+        New_trial_time = -200/1000: 1/(EEG.srate/2) : 1000/1000; % we divide by two because we downsample in the end
+        item_nr = structfun(@numel,Items); % get nr of items we have to save
+        item_nr = item_nr(con);
+        vals = zeros(EEG.nbchan, freq_num , length(New_trial_time),item_nr); % prepare datamatrix
+        vals2 = zeros(EEG.nbchan, freq_num , length(New_trial_time));
+        TF_phase.power = vals; %save power
+        TF_phase.itpc = vals2; %save itpc
+        TF.Item_nr = item_nr; %save item_nr
+        TF_phase.chanlocs = EEG.chanlocs; % keep channel information
+        TF_phase.Frequencies = freq_range; % keep frequency information that are modelled
+        TF_phase.Time = New_trial_time; % keep time indices that we are tying to model
+        
         trl_indices = getfield(Items, Fnames{con});
         fprintf('Analyzing trial subset %s of participant %s. \n',Fnames{con}, Participant_IDs{sub})
         % get bin data and parameter
@@ -193,7 +205,7 @@ for sub = 1:Part_N
         end
         
         % perform convolution on first data bin
-        for p_type = 1
+        for p_type = 1:2 %analyze both phaselocked and non_phaselocked data
             if p_type == 2
                 fprintf('Analyzing trial non-phase-locked power in subset %s of participant %s. \n',Fnames{con}, Participant_IDs{sub})
             else
@@ -267,34 +279,52 @@ for sub = 1:Part_N
                     %                         TF.itpc_phase.(Fnames{con})(chan,freq,:) = itpc(keep_time(1):keep_time(2)); %only keep period we are interested in
                     %                     end
                     
+                    % after the analysis we downsample to 125 Hz to have a smaller sample size but without loosing information
+                    pow2keep = downsample(decomp(keep_time(1):keep_time(2),:),2);
+                    itpc2keep = downsample(itpc(keep_time(1):keep_time(2)), 2);
+                    a = decomp(keep_time(1):keep_time(2),:);
+                    
                     if p_type == 2
-                        %save not baseline corrected power in power-matrix
-                        TF_non_phase.power.(Fnames{con})(chan,freq,:,trl_indices) = decomp(keep_time(1):keep_time(2),:);
+                        TF_non_phase.power(chan,freq,:, trl_indices) =  pow2keep;
                         %save itpc in itpc-matrix
-                        TF_non_phase.itpc.(Fnames{con})(chan,freq,:) = itpc(keep_time(1):keep_time(2)); %only keep period we are interested in
+                        TF_non_phase.itpc(chan,freq,:) = itpc2keep; %only keep period we are interested in
+                        
                     else
                         %save not baseline corrected power in power-matrix
-                        TF_phase.power.(Fnames{con})(chan,freq,:, trl_indices) = decomp(keep_time(1):keep_time(2),:);
+                        TF_phase.power(chan,freq,:, trl_indices) = pow2keep;
                         %save itpc in itpc-matrix
-                        TF_phase.itpc.(Fnames{con})(chan,freq,:) = itpc(keep_time(1):keep_time(2)); %only keep period we are interested in
+                        TF_phase.itpc(chan,freq,:) = itpc2keep; %only keep period we are interested in
                     end
                     
                 end
                 clear decomp temppower fft_dat fft_wavelet dat
             end
         end
+        fprintf('Saving frequency data of participant %s. \n',Participant_IDs{sub})
+        
+        if p == 2
+            save_name = strcat(Participant_IDs{sub}, '_', Fnames{con} ,'_frequency_data_npl.mat');
+            save_loc = fullfile(dirs.eegsave, Participant_IDs{sub}, save_name);
+            save(save_loc,'TF_non_phase','-v7.3');
+        else
+            save_name = strcat(Participant_IDs{sub}, '_', Fnames{con} ,'_frequency_data_pl.mat');
+            save_loc = fullfile(dirs.eegsave, Participant_IDs{sub}, save_name);
+            save(save_loc,'TF_phase','-v7.3');
+        end
+        fprintf('Frequency data of participant %s has been saved. \n',Participant_IDs{sub})
+        
     end
     
     % save power and itpc data, baseline correction will be performed
     % afterwards
-    fprintf('Saving frequency data of participant %s. \n',Participant_IDs{sub})
-    
-    save_name = strcat(Participant_IDs{sub}, '_frequency_data_phaselocked.mat');
-    save_loc = fullfile(dirs.eegsave, Participant_IDs{sub}, save_name);
-    save(save_loc,'TF_phase','-v7.3');
-    
-    fprintf('Frequency data of participant %s has been saved. \n',Participant_IDs{sub})
-    
+%     fprintf('Saving frequency data of participant %s. \n',Participant_IDs{sub})
+%     
+%     save_name = strcat(Participant_IDs{sub}, '_frequency_data_phaselocked.mat');
+%     save_loc = fullfile(dirs.eegsave, Participant_IDs{sub}, save_name);
+%     save(save_loc,'TF_phase','-v7.3');
+%     
+%     fprintf('Frequency data of participant %s has been saved. \n',Participant_IDs{sub})
+%     
     %remove intermediate variables to make some space
     clear EEG TF
     
