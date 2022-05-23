@@ -58,6 +58,7 @@ Participant_IDs              = Participant_IDs([Participant_IDs(:).isdir]); % re
 Participant_IDs              = Participant_IDs(~ismember({Participant_IDs(:).name},{'.','..'}));% remove '.' and '..'
 
 Participant_IDs          = Participant_IDs(~ismember({Participant_IDs(:).name},{'sub-PD_16'})); %remove PD 16, no data available and was excluded
+Participant_IDs          = Participant_IDs(~contains({Participant_IDs(:).name},{'derivatives'}));
 Participant_IDs          = Participant_IDs(~contains({Participant_IDs(:).name},{'sub-CY'})); %remove Data of young participants
 Participant_IDs              = {Participant_IDs(:).name};  
 Part_N                       = length(Participant_IDs); %number of participants
