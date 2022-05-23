@@ -3,5 +3,6 @@
 *.html
 *.rda
 *.m~
+*.asv
 # remove behavioral data files
 AdaptiveControlBehavior_files/
