@@ -119,7 +119,7 @@ end
 fix_baseline = [-0.2 -0.1]*EEG.srate;
 Baseline_time = dsearchn(EEG.times',[-300 -100]'); 
 keep_time =  dsearchn(EEG.times',[-200 1000]'); % time range we want to keep in the final dataset
-New_trial_time = -200/1000: 1/EEG.srate : 1000/1000;
+New_trial_time = -200/1000: 1/(EEG.srate/2) : 1000/1000; % divide sampling rate because we downsample data
 whole_trl_bsl =  dsearchn(EEG.times',[-200 1000]'); % we use the whole epoch before performing the baseline correction
 
 
@@ -131,7 +131,7 @@ whole_trl_bsl =  dsearchn(EEG.times',[-200 1000]'); % we use the whole epoch bef
 
 %% Perform Wavelet analysis on participant data
 
-for sub = 2:Part_N
+for sub = 2%:Part_N
     %load data set
     fileID              = strcat(Participant_IDs{sub}, '_epoched_freq.set'); %get file ID
     folderID            = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
@@ -172,17 +172,11 @@ for sub = 2:Part_N
     fprintf('Performing wavelet convolution on participant %s. \n',Participant_IDs{sub})
     
     for con = 1:length(Fnames)
-        New_trial_time = -200/1000: 1/(EEG.srate/2) : 1000/1000; % we divide by two because we downsample in the end
         item_nr = structfun(@numel,Items); % get nr of items we have to save
         item_nr = item_nr(con);
         vals = zeros(EEG.nbchan, freq_num , length(New_trial_time),item_nr); % prepare datamatrix
         vals2 = zeros(EEG.nbchan, freq_num , length(New_trial_time));
-        TF_phase.power = vals; %save power
-        TF_phase.itpc = vals2; %save itpc
-        TF.Item_nr = item_nr; %save item_nr
-        TF_phase.chanlocs = EEG.chanlocs; % keep channel information
-        TF_phase.Frequencies = freq_range; % keep frequency information that are modelled
-        TF_phase.Time = New_trial_time; % keep time indices that we are tying to model
+        
         
         trl_indices = getfield(Items, Fnames{con});
         fprintf('Analyzing trial subset %s of participant %s. \n',Fnames{con}, Participant_IDs{sub})
@@ -209,8 +203,22 @@ for sub = 2:Part_N
         for p_type = 1:2 %analyze both phaselocked and non_phaselocked data
             if p_type == 2
                 fprintf('Analyzing trial non-phase-locked power in subset %s of participant %s. \n',Fnames{con}, Participant_IDs{sub})
+                % create data structure to save results
+                TF_non_phase.power = vals; %save power
+                TF_non_phase.itpc = vals2; %save itpc
+                TF_non_phase.Item_nr = item_nr; %save item_nr
+                TF_non_phase.chanlocs = EEG.chanlocs; % keep channel information
+                TF_non_phase.Frequencies = freq_range; % keep frequency information that are modelled
+                TF_non_phase.Time = New_trial_time; % keep time indices that we are tying to model
             else
                 fprintf('Analyzing trial phase-locked power in subset %s of participant %s. \n',Fnames{con}, Participant_IDs{sub})
+                % create data structure to save results
+                TF_phase.power = vals; %save power
+                TF_phase.itpc = vals2; %save itpc
+                TF_phase.Item_nr = item_nr; %save item_nr
+                TF_phase.chanlocs = EEG.chanlocs; % keep channel information
+                TF_phase.Frequencies = freq_range; % keep frequency information that are modelled
+                TF_phase.Time = New_trial_time; % keep time indices that we are tying to model
             end
             for chan = 1: EEG.nbchan
                 for freq = 1:freq_num
@@ -283,7 +291,6 @@ for sub = 2:Part_N
                     % after the analysis we downsample to 125 Hz to have a smaller sample size but without loosing information
                     pow2keep = downsample(decomp(keep_time(1):keep_time(2),:),2);
                     itpc2keep = downsample(itpc(keep_time(1):keep_time(2)), 2);
-                    a = decomp(keep_time(1):keep_time(2),:);
                     
                     if p_type == 2
                         TF_non_phase.power(chan,freq,:, trl_indices) =  pow2keep;
@@ -302,14 +309,17 @@ for sub = 2:Part_N
             end
             fprintf('Saving frequency data of participant %s. \n',Participant_IDs{sub})
             
+            % Save data
             if p_type == 2
                 save_name = strcat(Participant_IDs{sub}, '_', Fnames{con} ,'_frequency_data_npl.mat');
                 save_loc = fullfile(dirs.eegsave, Participant_IDs{sub}, save_name);
                 save(save_loc,'TF_non_phase','-v7.3');
+                clear TF_non_phase % remove data to save up space
             else
                 save_name = strcat(Participant_IDs{sub}, '_', Fnames{con} ,'_frequency_data_pl.mat');
                 save_loc = fullfile(dirs.eegsave, Participant_IDs{sub}, save_name);
                 save(save_loc,'TF_phase','-v7.3');
+                clear TF_phase % remove data to save up space
             end
             fprintf('Frequency data of participant %s has been saved. \n',Participant_IDs{sub})
         end
@@ -317,16 +327,16 @@ for sub = 2:Part_N
     
     % save power and itpc data, baseline correction will be performed
     % afterwards
-%     fprintf('Saving frequency data of participant %s. \n',Participant_IDs{sub})
-%     
-%     save_name = strcat(Participant_IDs{sub}, '_frequency_data_phaselocked.mat');
-%     save_loc = fullfile(dirs.eegsave, Participant_IDs{sub}, save_name);
-%     save(save_loc,'TF_phase','-v7.3');
-%     
-%     fprintf('Frequency data of participant %s has been saved. \n',Participant_IDs{sub})
-%     
+    %     fprintf('Saving frequency data of participant %s. \n',Participant_IDs{sub})
+    %
+    %     save_name = strcat(Participant_IDs{sub}, '_frequency_data_phaselocked.mat');
+    %     save_loc = fullfile(dirs.eegsave, Participant_IDs{sub}, save_name);
+    %     save(save_loc,'TF_phase','-v7.3');
+    %
+    %     fprintf('Frequency data of participant %s has been saved. \n',Participant_IDs{sub})
+    %
     %remove intermediate variables to make some space
-    clear EEG TF
+    clear EEG
     
 end
 %% Plot 
