@@ -131,7 +131,7 @@ whole_trl_bsl =  dsearchn(EEG.times',[-200 1000]'); % we use the whole epoch bef
 
 %% Perform Wavelet analysis on participant data
 
-for sub = 1:Part_N
+for sub = 2:Part_N
     %load data set
     fileID              = strcat(Participant_IDs{sub}, '_epoched_freq.set'); %get file ID
     folderID            = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
