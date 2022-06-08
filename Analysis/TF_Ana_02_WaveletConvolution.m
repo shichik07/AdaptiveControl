@@ -131,7 +131,7 @@ whole_trl_bsl =  dsearchn(EEG.times',[-200 1000]'); % we use the whole epoch bef
 
 %% Perform Wavelet analysis on participant data
 
-for sub = 2%:Part_N
+for sub = 1:Part_N
     %load data set
     fileID              = strcat(Participant_IDs{sub}, '_epoched_freq.set'); %get file ID
     folderID            = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
@@ -200,7 +200,7 @@ for sub = 2%:Part_N
         end
         
         % perform convolution on first data bin
-        for p_type = 1:2 %analyze both phaselocked and non_phaselocked data
+        for p_type =  1:2 %analyze both phaselocked and non_phaselocked data
             if p_type == 2
                 fprintf('Analyzing trial non-phase-locked power in subset %s of participant %s. \n',Fnames{con}, Participant_IDs{sub})
                 % create data structure to save results
@@ -293,13 +293,13 @@ for sub = 2%:Part_N
                     itpc2keep = downsample(itpc(keep_time(1):keep_time(2)), 2);
                     
                     if p_type == 2
-                        TF_non_phase.power(chan,freq,:, trl_indices) =  pow2keep;
+                        TF_non_phase.power(chan,freq,:, :) =  pow2keep;
                         %save itpc in itpc-matrix
                         TF_non_phase.itpc(chan,freq,:) = itpc2keep; %only keep period we are interested in
                         
                     else
                         %save not baseline corrected power in power-matrix
-                        TF_phase.power(chan,freq,:, trl_indices) = pow2keep;
+                        TF_phase.power(chan,freq,:, :) = pow2keep;
                         %save itpc in itpc-matrix
                         TF_phase.itpc(chan,freq,:) = itpc2keep; %only keep period we are interested in
                     end
