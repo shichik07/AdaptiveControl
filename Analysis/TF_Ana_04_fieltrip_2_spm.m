@@ -69,7 +69,9 @@ for sub = 1:Part_N
     folderID_t1                 = {folderID_t1(:).name}; %phase_locked files
     folderID_t2                 = {folderID_t2(:).name}; %non_phase locked files
     
+    cd(fullfile(dirs.eegsave, Participant_IDs{sub}))
     
+    fprintf('Perform spm conversion for participant %s. \n',Participant_IDs{sub})
     for p_type = 1:2 % do this for the phase locked and non-phase locked data
         
         if p_type == 1
@@ -81,6 +83,7 @@ for sub = 1:Part_N
         end
         
         for con = 1:length(files)
+            
             load_loc = fullfile(dirs.eegsave, Participant_IDs{sub},  files{con});
             data = load(load_loc);
             if p_type == 1
@@ -96,6 +99,8 @@ for sub = 1:Part_N
             new_fn = files{con};
             new_fn = strcat(new_fn(1:end-4), '_spm.mat');
             save_loc = fullfile(dirs.home, Participant_IDs{sub}, new_fn);
+            condition =  new_fn(subn_l+2:subn_l+10);
+            fprintf('Perform spm conversion in participant %s for condition %s. \n',Participant_IDs{sub}, condition)
             
             % convert to spm format
             D = spm_eeg_ft2spm(data, new_fn);
@@ -107,7 +112,7 @@ for sub = 1:Part_N
             D = type(D, 'single');             % Sets the dataset type
             D = chantype(D, [], 'EEG');        % Sets the channel type
             subn_l = length(Participant_IDs{sub}); % get length of subject name
-            D = conditions(D, [], new_fn(subn_l+2:subn_l+10);  % Sets the condition label
+            D = conditions(D, [], condition);  % Sets the condition label
             
             % save
             %--------------------------------------------------------------------------
