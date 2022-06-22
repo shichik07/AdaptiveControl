@@ -127,7 +127,8 @@ for sub = 1:Part_N
                 % add indicator that data is baseline corrected
                 TF_phase.baseline = 1;
                 %save data on different hard drive
-                save_loc = fullfile(dirs.eegsave, Participant_IDs{sub},  folderID_t1{con});
+                new_save = strcat(folderID_t2{con}(1:end-4),'_bslC.mat');
+                save_loc = fullfile(dirs.home, Participant_IDs{sub}, new_save);
                 save(save_loc,'TF_phase','-v7.3');
             end
         else % for non_phase locked frequency data
@@ -146,7 +147,8 @@ for sub = 1:Part_N
                 % add indicator that data is baseline corrected
                 TF_non_phase.baseline = 1;
                 %save data on different hard drive
-                save_loc = fullfile(dirs.eegsave, Participant_IDs{sub},  folderID_t2{con});
+                new_save = strcat(folderID_t2{con}(1:end-4),'_bslC.mat');
+                save_loc = fullfile(dirs.home, Participant_IDs{sub}, new_save);
                 save(save_loc,'TF_non_phase','-v7.3'); 
             end
         end  
