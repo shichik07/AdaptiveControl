@@ -89,7 +89,7 @@ for sub = 1:Part_N
                 save_loc = fullfile(dirs.home, Participant_IDs{sub},  folderID_t1{con});
                 clear TF_phase % remove data to save up space
                 load(save_loc, 'TF_phase');
-                data = cat(4, TF_phase.power);
+                data = cat(4, data, TF_phase.power);
             end
         else % for non_phase locked frequency data
             data = [];
@@ -97,7 +97,7 @@ for sub = 1:Part_N
                 save_loc = fullfile(dirs.home, Participant_IDs{sub},  folderID_t2{con});
                 clear TF_non_phase % remove data to save up space
                 load(save_loc, 'TF_non_phase');
-                data = cat(4, TF_non_phase.power);
+                data = cat(4, data, TF_non_phase.power);
             end
         end
         
