@@ -113,7 +113,7 @@ for sub = 1:Part_N
         % Load all the data to get the baseline across conditions
         if p_type == 1 % for phase_locked frequency data
             data = [];
-            for con = 1:length(folderID_t2)
+            for con = 1:length(folderID_t1)
                 load_loc = fullfile(dirs.home, Participant_IDs{sub},  folderID_t1{con});
                 clear TF_phase % remove data to save up space
                 load(load_loc, 'TF_phase');
@@ -127,7 +127,7 @@ for sub = 1:Part_N
                 % add indicator that data is baseline corrected
                 TF_phase.baseline = 1;
                 %save data on different hard drive
-                new_save = strcat(folderID_t2{con}(1:end-4),'_bslC.mat');
+                new_save = strcat(folderID_t1{con}(1:end-4),'_bslC.mat');
                 save_loc = fullfile(dirs.home, Participant_IDs{sub}, new_save);
                 save(save_loc,'TF_phase','-v7.3');
             end
