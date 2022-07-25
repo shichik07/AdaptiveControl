@@ -145,14 +145,14 @@ for sub = 2:Part_N
     Items = get_trlindices(EEG); %get indices of trials by condition
     Fnames = fieldnames(Items); % get associated condition names
     
+    
     fprintf('Performing wavelet convolution on participant %s. \n',Participant_IDs{sub})
     
     for con = 1:length(Fnames)
-        item_nr = structfun(@numel,Items); % get nr of items we have to save
-        item_nr = item_nr(con);
+        item_nr = length(getfield(Items, Fnames{con})) % get nr of items we have to save
+        
         vals = zeros(EEG.nbchan, freq_num , length(New_trial_time),item_nr); % prepare datamatrix
         vals2 = zeros(EEG.nbchan, freq_num , length(New_trial_time));
-        
         
         trl_indices = getfield(Items, Fnames{con});
         fprintf('Analyzing trial subset %s of participant %s. \n',Fnames{con}, Participant_IDs{sub})
