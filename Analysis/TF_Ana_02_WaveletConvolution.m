@@ -131,7 +131,7 @@ whole_trl_bsl =  dsearchn(EEG.times',[-200 1000]'); % we use the whole epoch bef
 
 %% Perform Wavelet analysis on participant data
 
-for sub = 1:Part_N
+for sub = 2:Part_N
     %load data set
     fileID              = strcat(Participant_IDs{sub}, '_epoched_freq.set'); %get file ID
     folderID            = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
@@ -145,30 +145,6 @@ for sub = 1:Part_N
     Items = get_trlindices(EEG); %get indices of trials by condition
     Fnames = fieldnames(Items); % get associated condition names
     
-    % create struct where we save our averaged frequency condition data
-    %     vals = zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)), EEG.trials);
-    %     vals = repmat({vals},1,length(Fnames));
-    %     args=[Fnames';vals];
-    %     vals2 = zeros(EEG.nbchan, freq_num , length(keep_time(1):keep_time(2)));
-    %     vals2 = repmat({vals2},1,length(Fnames));
-    %     args3 = [Fnames';vals2];
-    %     TF_phase.power = struct(args{:}); % create a struct with matrix for each category for power values
-    %     TF_phase.itpc  = struct(args3{:}); % create a struct with matrix for each category for inter trial phase clustering values
-    % %     TF_non_phase.power = struct(args{:}); % create a struct with matrix for each category for power values
-    % %     TF_non_phase.itpc  = struct(args3{:}); % create a struct with matrix for each category for inter trial phase clustering values
-    %     args2 = [Fnames';num2cell(structfun(@numel,Items))']; %get numer of items in case of weighting
-    %     TF_phase.Item_nr = struct(args2{:});
-    % %     TF_non_phase.Item_nr = struct(args2{:});
-    %     TF_phase.chanlocs = EEG.chanlocs; % keep channel information
-    %     TF_phase.Frequencies = freq_range; % keep frequency information that are modelled
-    %     TF_phase.Time = New_trial_time; % keep time indices that we are tying to model
-    % %     TF_non_phase.chanlocs = EEG.chanlocs; % keep channel information
-    % %     TF_non_phase.Frequencies = freq_range; % keep frequency information that are modelled
-    % %     TF_non_phase.Time = New_trial_time; % keep time indices that we are tying to model
-    %
-    %
-    %     clear vals args args2 % clear these to free up workspace
-    %
     fprintf('Performing wavelet convolution on participant %s. \n',Participant_IDs{sub})
     
     for con = 1:length(Fnames)
@@ -266,27 +242,8 @@ for sub = 1:Part_N
                         fix_time(trl,:) = baseidx + Baseline_time; %safe indices and subtract samples for baseline indices
                         %base_power(trl) = mean(decomp(fix_time(trl,1): fix_time(trl,2), trl)); %baseline blank screen period
                         base_power(trl) = mean(decomp(whole_trl_bsl(1): whole_trl_bsl(2), trl)); % baseline over trial period
-                        %base_power(trl) = mean(decomp(Baseline_time(1): Baseline_time(2), trl)); %baseline during fixation
-                        %base_power(trl)  = bp(chan);
+                        
                     end
-                    
-                    %                     temppower = zeros(EEG.pnts,con_trl);
-                    %                     % perform baseline correction and convert to decible scale
-                    %                     for trl = 1:con_trl
-                    %                         temppower(:,trl) = 10*log10(decomp(:,trl)./base_power(trl));
-                    %                     end
-                    
-                    %                     if p_type == 2
-                    %                         %save power in power-matrix
-                    %                         TF.power_non_phase.(Fnames{con})(chan,freq,:) = mean(temppower(keep_time(1):keep_time(2),:),2);
-                    %                         %save itpc in itpc-matrix
-                    %                         TF.itpc_non_phase.(Fnames{con})(chan,freq,:) = itpc(keep_time(1):keep_time(2)); %only keep period we are interested in
-                    %                     else
-                    %                         %save power in power-matrix
-                    %                         TF.power_phase.(Fnames{con})(chan,freq,:) = mean(temppower(keep_time(1):keep_time(2),:),2);
-                    %                         %save itpc in itpc-matrix
-                    %                         TF.itpc_phase.(Fnames{con})(chan,freq,:) = itpc(keep_time(1):keep_time(2)); %only keep period we are interested in
-                    %                     end
                     
                     % after the analysis we downsample to 125 Hz to have a smaller sample size but without loosing information
                     pow2keep = downsample(decomp(keep_time(1):keep_time(2),:),2);
@@ -325,90 +282,9 @@ for sub = 1:Part_N
         end
     end
     
-    % save power and itpc data, baseline correction will be performed
-    % afterwards
-    %     fprintf('Saving frequency data of participant %s. \n',Participant_IDs{sub})
-    %
-    %     save_name = strcat(Participant_IDs{sub}, '_frequency_data_phaselocked.mat');
-    %     save_loc = fullfile(dirs.eegsave, Participant_IDs{sub}, save_name);
-    %     save(save_loc,'TF_phase','-v7.3');
-    %
-    %     fprintf('Frequency data of participant %s has been saved. \n',Participant_IDs{sub})
-    %
+  
     %remove intermediate variables to make some space
     clear EEG
     
 end
-%% Plot 
 
-% get average power over trials
-old_TF = TF;
-LWPC_I_I_nphase = TF.power_phase.LWPC_MI_I - TF.power_non_phase.LWPC_MI_I;
-LWPC_I_C_nphase = TF.power_phase.LWPC_MI_C - TF.power_non_phase.LWPC_MI_C;
-av_eegpower = TF.power_phase.LWPC_MI_C -TF.power_phase.LWPC_MI_I;
-chan2use = 'Pz';
-chanidx = strcmpi(chan2use,{EEG.chanlocs.labels});
-power_sub = squeeze(av_eegpower(chanidx, :, :));
-%itpc_sub = squeeze(itpc(chanidx, :, :));
-
-max_scale = max(power_sub,[], 'all') +0.5
-min_scale = min(power_sub,[], 'all') -0.5
-figure(6)
-contourf(New_trial_time,freq_range,power_sub,60,'linecolor','none')
-set(gca,'clim',[min_scale, max_scale],'yscale','log','ytick',logspace(log10(freq_low),log10(freq_up),6),'yticklabel',round(logspace(log10(freq_low),log10(freq_up),6)*10)/10)
-title('Power')
-colormap(jet)
-colorbar
-
-
-av_eegpower_old = old_TF.power.LWPC_MI_I;
-power_sub_old = squeeze(av_eegpower_old(chanidx, :, :));
-
-figure(4)
-contourf(New_trial_time,freq_range,power_sub_old,20,'linecolor','none')
-set(gca,'clim',[-5, 2],'yscale','log','ytick',logspace(log10(freq_low),log10(freq_up),6),'yticklabel',round(logspace(log10(freq_low),log10(freq_up),6)*10)/10)
-title('Power')
-colormap(jet)
-
-
-%'xlim',[-200 800],
-figure(3)
-subplot(121)
-contourf(New_trial_time,freq_range,power_sub,40,'linecolor','none')
-set(gca,'clim',[-0.5 0.5],'yscale','log','ytick',logspace(log10(freq_low),log10(freq_up),6),'yticklabel',round(logspace(log10(freq_low),log10(freq_up),6)*10)/10)
-title('Logarithmic frequency scaling')
-
-
-% subplot(122)
-% contourf(EEG.times,freq_range,itpc_sub,40,'linecolor','none')
-% set(gca,'clim',[0 .6],'xlim',[-200 1000])
-% xlabel('Time (ms)'), ylabel('Frequencies (Hz)')
-% title('ITPC')
-
-
-%% Tasks to be done
-% remove the ERP from the data - to get non-phase locked pertubations
-
-% Use the whole data baseline if possible - seems to be a computational
-% problem as the dataset is too large to be processed in this manner though
-
-% With regard to the baseline correction we will continue as follows.
-% baseline correction so far was done incorrectly. We do not use the
-% baseline of each trial but we HAVE to take the baseline average. Hence we
-% continue as follows. We will keep all frequency transformed trials. Of
-% these frequency transformed trials we can calculate the average baseline
-% over all trials - covering the baseline activity from pre-stim to whole
-% trial freqeuncy activy. This will be done in a second step. Hence we will
-% have single trials which we can subsequently analyze using a linear
-% regression. Moreover, keep the averaged ERSP image. So we will have
-% single trials on which we can perform our regression analysis and in
-% addition, we will have the correctly avereaged (prior to log transfrom)
-% ERSP which we can use for visualization purposes.
-
-% perhaps focus on a sub analysis in the theta band to look at scalp
-% distribution for all electrodes midfrontal (Fz, FC1, FCz, FC2, Cz) or
-% (AFz, F1, Fz, F2, FC1, FCz, FC2.), for the latter see https://www.nature.com/articles/s41598-021-95631-1
-
-% Select a proper baseline - compare baseline analyses with a baseline over
-% the whole trial and a baseline period during fixation. Use a baseline
-% that goes over the whole task dataset - not a condition specific baseline
