@@ -52,14 +52,19 @@ Participant_IDs              = Participant_IDs(~contains({Participant_IDs(:).nam
 Participant_IDs              = {Participant_IDs(:).name};
 Part_N                       = length(Participant_IDs); %number of participants
 
-for sub = 1:Part_N
+ISPC_only = 1;
+
+for sub = 2:Part_N
     % get file IDs
     folderID                    = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
     folderID_t1                 = dir(fullfile(folderID, '**', '*_pl.mat'));
     folderID_t2                 = dir(fullfile(folderID, '**', '*_npl.mat'));
+    folderID_t1                 = folderID_t1(~contains({folderID_t1(:).name},{'GLM'})); % not sure where this mistake came from
+    folderID_t2                 = folderID_t2(~contains({folderID_t2(:).name},{'GLM'}));
     folderID_t1                 = {folderID_t1(:).name}; %phase_locked files
     folderID_t2                 = {folderID_t2(:).name}; %non_phase locked files
-    
+    ISPC_t2                     = folderID_t2(~contains(folderID_t2(:),{'LWPC'})); %ISPC t2 data only for baseline correction
+    ISPC_t1                     = folderID_t1(~contains(folderID_t1(:),{'LWPC'})); %%ISPC t1 data only for baseline correction
     
     for p_type = 1:2 % do this for the phase locked and non-phase locked data
         % load both the phase locked and non_phase locked data to see if it has
@@ -85,7 +90,7 @@ for sub = 1:Part_N
         % Load all the data to get the baseline across conditions
         if p_type == 1 % for phase_locked frequency data
             data = [];
-            for con = 1:length(folderID_t2)
+            for con = 1:length(folderID_t1)
                 save_loc = fullfile(dirs.home, Participant_IDs{sub},  folderID_t1{con});
                 clear TF_phase % remove data to save up space
                 load(save_loc, 'TF_phase');
@@ -109,12 +114,22 @@ for sub = 1:Part_N
         clear data
         
         % perform baseline correction for each dataset separately
+        if ISPC_only == 1;
+            corrected_con_t1 = ISPC_t1;
+            corrected_con_t2 = ISPC_t2;
+        else
+            corrected_con_t1 = folderID_t1;
+            corrected_con_t2 = folderID_t2;
+        end
+        
+            
         
         % Load all the data to get the baseline across conditions
         if p_type == 1 % for phase_locked frequency data
             data = [];
-            for con = 1:length(folderID_t1)
-                load_loc = fullfile(dirs.home, Participant_IDs{sub},  folderID_t1{con});
+            for con = 1:length(corrected_con_t1)
+                fprintf('Perform Baselin Correction for participant %s and condition %s. \n',Participant_IDs{sub}, corrected_con_t1{con}(11:19))
+                load_loc = fullfile(dirs.home, Participant_IDs{sub},  corrected_con_t1{con});
                 clear TF_phase % remove data to save up space
                 load(load_loc, 'TF_phase');
                 
@@ -127,14 +142,15 @@ for sub = 1:Part_N
                 % add indicator that data is baseline corrected
                 TF_phase.baseline = 1;
                 %save data on different hard drive
-                new_save = strcat(folderID_t1{con}(1:end-4),'_bslC.mat');
+                new_save = strcat(corrected_con_t1{con}(1:end-4),'_bslC.mat');
                 save_loc = fullfile(dirs.home, Participant_IDs{sub}, new_save);
                 save(save_loc,'TF_phase','-v7.3');
             end
         else % for non_phase locked frequency data
             data = [];
-            for con = 1:length(folderID_t2)
-                load_loc = fullfile(dirs.home, Participant_IDs{sub},  folderID_t2{con});
+            for con = 1:length(corrected_con_t2)
+                fprintf('Perform Baselin Correction for participant %s and condition %s. \n',Participant_IDs{sub}, corrected_con_t2{con}(11:19))
+                load_loc = fullfile(dirs.home, Participant_IDs{sub},  corrected_con_t2{con});
                 clear TF_non_phase % remove data to save up space
                 load(load_loc, 'TF_non_phase');
                 
@@ -147,7 +163,7 @@ for sub = 1:Part_N
                 % add indicator that data is baseline corrected
                 TF_non_phase.baseline = 1;
                 %save data on different hard drive
-                new_save = strcat(folderID_t2{con}(1:end-4),'_bslC.mat');
+                new_save = strcat(corrected_con_t2{con}(1:end-4),'_bslC.mat');
                 save_loc = fullfile(dirs.home, Participant_IDs{sub}, new_save);
                 save(save_loc,'TF_non_phase','-v7.3'); 
             end
