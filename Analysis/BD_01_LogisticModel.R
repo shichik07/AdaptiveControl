@@ -192,6 +192,7 @@ fit_logisticMod_inducer_LW <- brm(formula = m1_LW,
 )
 
 save(fit_logisticMod_inducer_LW, file = "fit_logisticMod_inducer_LW.rda")
+load(file = "fit_logisticMod_inducer_LW.rda")
 
 fit_logisticMod_inducer_IS <- brm(formula = m1_IS,
                             family = bernoulli(link = logit),
@@ -206,6 +207,7 @@ fit_logisticMod_inducer_IS <- brm(formula = m1_IS,
 )
 
 save(fit_logisticMod_inducer_IS, file = "fit_logisticMod_inducer_IS.rda")
+load(file = "fit_logisticMod_inducer_IS.rda")
 
 
 ### Now that the inducer models are run, we use the posteriors as informed priors for the diagnostic models
@@ -214,27 +216,66 @@ save(fit_logisticMod_inducer_IS, file = "fit_logisticMod_inducer_IS.rda")
 prior_informed_LW <- c(
   prior(normal(-4.4, 0.4), class = Intercept), # group effect non-decision time CO is 0 in the contrast we assume on average 200ms
   prior(normal(-1.67, 0.45), class = b, coef = Contrast_LWCO_Congruency), # Priors of Contrasts for CO
-  prior(normal(0.35, 0.45), class = b, coef = Contrast_LWCO_Listwide),
-  prior(normal(-0.7, 0.43), class = b, coef = Contrast_LWCO_LW_Block),
-  prior(normal(-2, 1.5), class = b, coef = Contrast_LWPD_Congruency), # Priors of Contrasts for PD patients
-  prior(normal(-2, 1.5), class = b, coef = Contrast_LWPD_Listwide),
-  prior(normal(-2, 1.5), class = b, coef = Contrast_LWPD_LW_Block),
-  prior(normal(0.71, 0.26), class = sd, coef = Intercept, group = Subject),
-  prior(normal(0.44, 0.39), class = sd, coef = Intercept, group = Item)
+  prior(normal(0.41, 0.46), class = b, coef = Contrast_LWCO_Listwide),
+  prior(normal(-0.64, 0.46), class = b, coef = Contrast_LWCO_LW_Block),
+  prior(normal(-1.48, 0.38), class = b, coef = Contrast_LWPD_Congruency), # Priors of Contrasts for PD patients
+  prior(normal(0.39, 0.38), class = b, coef = Contrast_LWPD_Listwide),
+  prior(normal(-0.14, 0.38), class = b, coef = Contrast_LWPD_LW_Block),
+  prior(normal(0.72, 0.23), class = sd, coef = Intercept, group = Subject),
+  prior(normal(0.46, 0.45), class = sd, coef = Intercept, group = Item)
 )
 
 # Prior informed Item Specific
 prior_informed_IS <- c(
-  prior(normal(-1.3, 1.5), class = Intercept), # group effect non-decision time CO is 0 in the contrast we assume on average 200ms
-  prior(normal(-2,1.5), class = b, coef = Contrast_ISCO_Congruency), # Priors of Contrasts for CO
-  prior(normal(-2,1.5), class = b, coef = Contrast_ISCO_Itemspecific),
-  prior(normal(-2,1.5), class = b, coef = Contrast_ISCO_IS_Block),
-  prior(normal(-2,1.5), class = b, coef = Contrast_ISPD_Congruency), # Priors of Contrasts for PD patients
-  prior(normal(-2,1.5), class = b, coef = Contrast_ISPD_Itemspecific),
-  prior(normal(-2,1.5), class = b, coef = Contrast_ISPD_IS_Block),
-  prior(normal(-2,1.5), class = sd, coef = Intercept, group = Subject),
-  prior(normal(-2,1.5), class = sd, coef = Intercept, group = Item)
+  prior(normal(-4.51, 0.6), class = Intercept), # group effect non-decision time CO is 0 in the contrast we assume on average 200ms
+  prior(normal(-1.76, 0.53), class = b, coef = Contrast_ISCO_Congruency), # Priors of Contrasts for CO
+  prior(normal(-0.1, 0.54), class = b, coef = Contrast_ISCO_Itemspecific),
+  prior(normal(-0.52, 0.5), class = b, coef = Contrast_ISCO_IS_Block),
+  prior(normal(-0.88, 0.25), class = b, coef = Contrast_ISPD_Congruency), # Priors of Contrasts for PD patients
+  prior(normal(0.2, 0.26), class = b, coef = Contrast_ISPD_Itemspecific),
+  prior(normal(-0.59, 0.25), class = b, coef = Contrast_ISPD_IS_Block),
+  prior(normal(1.25 , 0.22), class = sd, coef = Intercept, group = Subject),
+  prior(normal(0.58 , 0.65), class = sd, coef = Intercept, group = Item)
 )
+
+
+# we should consider varying non-decision times between the groups
+fit_logisticMod_diagnostic_LW <- brm(formula = m1_LW,
+                                  family = bernoulli(link = logit),
+                                  data = Data_y_diagnostic_LWPC,
+                                  prior = prior_informed_LW,
+                                  warmup = 2000,
+                                  iter = 22000,# 20000 is the limit necessary for bridge sampling
+                                  cores = 4, seed = 423,
+                                  control = list(adapt_delta = 0.95),
+                                  save_pars = save_pars(all = TRUE), # must be set to true for bridgesampling
+                                  chains =4
+)
+
+save(fit_logisticMod_diagnostic_LW, file = "fit_logisticMod_diagnostic_LW.rda")
+#load(file = "fit_logisticMod_diagnostic_LW.rda")
+
+fit_logisticMod_diagnostic_IS <- brm(formula = m1_IS,
+                                  family = bernoulli(link = logit),
+                                  data = Data_y_diagnostic_ISPC,
+                                  prior = prior_informed_IS,
+                                  warmup = 2000,
+                                  iter = 22000,# 20000 is the limit necessary for bridge sampling
+                                  cores = 4, seed = 412,
+                                  control = list(adapt_delta = 0.95),
+                                  save_pars = save_pars(all = TRUE), # must be set to true for bridgesampling
+                                  chains =4
+)
+
+save(fit_logisticMod_diagnostic_IS, file = "fit_logisticMod_diagnostic_IS.rda")
+load(file = "fit_logisticMod_diagnostic_IS.rda")
+
+
+
+
+
+
+
 
 
 function(proportion){
