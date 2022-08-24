@@ -233,7 +233,7 @@ for(mods in 1:length(LW_mods)){
                                     data = Data_y_inducer_LWPC,
                                     prior = LW_weakly,
                                     warmup = 2000,
-                                    iter = 22000,# 20000 is the limit necessary for bridge sampling
+                                    iter = 12000,# 20000 is the limit necessary for bridge sampling
                                     cores = 4, seed = 423,
                                     control = list(adapt_delta = 0.95),
                                     save_pars = save_pars(all = TRUE), # must be set to true for bridgesampling
@@ -258,8 +258,8 @@ for(mods in 1:length(IS_mods)){
                           family = bernoulli(link = logit),
                           data = Data_y_inducer_ISPC,
                           prior = IS_weakly,
-                          warmup = 200,
-                          iter = 220,# 20000 is the limit necessary for bridge sampling
+                          warmup = 2000,
+                          iter = 12000,# 20000 is the limit necessary for bridge sampling
                           cores = 4, seed = 423,
                           control = list(adapt_delta = 0.95),
                           save_pars = save_pars(all = TRUE), # must be set to true for bridgesampling
