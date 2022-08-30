@@ -10,6 +10,8 @@ library(hypr)
 library(rstan)# package to generate contrasts
 library(StanHeaders)
 library(purrr)
+library(broom) # to access and manipulate summary object
+
 
 #library(chkptstanr) #package to interupt and restart sampling with stanr/brmslibrary(posterior)
 
@@ -20,20 +22,16 @@ set.seed(32946)
 # not we use not participant PD_16 because he slept in during the experiment 
 
 # load the clinical data
+#load the clinical data first
 Clinic <- read.table(file = "participants.tsv", header = TRUE)
-Clinic <- as_tibble(Clinic) %>%
-  matches()
-  mutate(find_me = any(str_det))
- 
-detect_index(Clinic, "sub-PD_1")
-which(Clinic$participant_id == "sub-PD_1")
+Clinic <- as_tibble(Clinic)
 
 path1 = "Z:/JuliusKricheldorff/AdaptiveControl/BehavioralData"
 files = list.files(path = path1, pattern = "AdapCon_PD", full.names = TRUE, recursive = FALSE)
 df = tibble()
 
 for (x in files) {
-  #fil <- x
+  
   t <- read.csv(x, header = TRUE)
   t <- as_tibble(t)
   name <- substr(x, 62,63)
@@ -41,7 +39,16 @@ for (x in files) {
   subject_id <- paste0('sub-', name, '_', num)
   t$Subject <- subject_id
   updrs_ind <- which(Clinic$participant_id == subject_id)
-  t$UPDRS <- as.numeric(Clinic$UPDRS[70])
+  if (length(updrs_ind) == 0){
+    t$UPDRS = NA
+  } else{ 
+    if (Clinic$UPDRS[updrs_ind] == "n/a"){
+      t$UPDRS = NA
+    } else {
+      t$UPDRS <- as.numeric(Clinic$UPDRS[updrs_ind])
+    }
+  }
+  
   df <- bind_rows(df, t)
 }
 
@@ -54,7 +61,9 @@ df <- df %>%
   mutate(Item_specific = ifelse(Analysis_type == "main_con" | Analysis_type == "main_incon", 'Item_spec', 'List_wide' )) %>%
   mutate( Congruency_main = ifelse(Analysis_type == "main_con"| Analysis_type == "MC", "M_Congruent", "M_Incongruent")) %>% 
   select(response_time_Keyboard_response, Age, Congruency, Gender, Analysis_type, Exp_group, Subject, Trl_type, correct_Keyboard_response, Block, Item, Item_specific, Congruency_main, UPDRS) %>%
-  dplyr::rename(RT = response_time_Keyboard_response, Correct_A = correct_Keyboard_response)
+  dplyr::rename(RT = response_time_Keyboard_response, Correct_A = correct_Keyboard_response) %>%
+  filter(Subject != "sub-PD_c(\"11\", \"2\")" &  Subject != "sub-PD_16") #exclude participant 16 and the partial dataset by participant 11
+
 
 # Contrasts only for the list-wide effect only
 StroopCon_LW <- hypr(
@@ -179,4 +188,139 @@ fit_ShiftedLog_PDOnly_inducer_LW <- brm(formula = m2_PD_LW ,
 
 save(fit_ShiftedLog_PDOnly_inducer_LW, file = "fit_ShiftedLog_PDOnly_inducer_LW.rda")
 
+# get posterior to inform prior
+load("fit_ShiftedLog_PDOnly_inducer_LW.rda")
+ind_sum <- summary(fit_ShiftedLog_PDOnly_inducer_LW)
 
+sd_determination <- function(mean, upper95, lower95){
+  bound1 <- abs(mean - upper95)
+  bound2 <- abs(mean - lower95)
+  if (bound1 > bound2){
+    return(bound1)
+  } else {
+    return(bound2)
+  }
+}
+
+# first we write a prior tibble
+
+prior_tib <- tibble(
+  mean = numeric(),
+  sd = numeric(),
+  var = character()
+)
+
+# Next we add all our variables
+prior_tib <-prior_tib %>%
+  add_row(
+    mean = ind_sum$fixed$Estimate[1],
+    sd = sd_determination(ind_sum$fixed$Estimate[1], ind_sum$fixed$`u-95% CI`[1], ind_sum$fixed$`l-95% CI`[1]),
+    var = "Fixed_Intercept"
+  ) %>%
+  add_row(
+    mean = ind_sum$spec_pars$Estimate[1],
+    sd = sd_determination(ind_sum$spec_pars$Estimate[1], ind_sum$spec_pars$`u-95% CI`[1], ind_sum$spec_pars$`l-95% CI`[1]),
+    var = "sigma"
+  ) %>%
+  add_row(
+    mean = ind_sum$spec_pars$Estimate[2],
+    sd = sd_determination(ind_sum$spec_pars$Estimate[2], ind_sum$spec_pars$`u-95% CI`[2], ind_sum$spec_pars$`l-95% CI`[2]),
+    var = "ndt"
+  ) %>%
+  add_row(
+    mean = ind_sum$fixed$Estimate[2],
+    sd = sd_determination(ind_sum$fixed$Estimate[2], ind_sum$fixed$`u-95% CI`[2], ind_sum$fixed$`l-95% CI`[2]),
+    var = "Fixed_Contrast_LWPD_Congruency"
+  ) %>%
+  add_row(
+    mean = 0, # fixed effect for the interaction has to be centered around 0
+    sd = ind_sum$fixed$Estimate[3] + sd_determination(ind_sum$fixed$Estimate[3], ind_sum$fixed$`u-95% CI`[3], ind_sum$fixed$`l-95% CI`[3]),
+    var = "Fixed_Contrast_LWPD_Listwide"
+  ) %>%
+  add_row(
+    mean = ind_sum$fixed$Estimate[4],
+    sd = sd_determination(ind_sum$fixed$Estimate[4], ind_sum$fixed$`u-95% CI`[4], ind_sum$fixed$`l-95% CI`[4]),
+    var = "Fixed_Contrast_LWPD_LW_Block"
+  ) %>%
+  add_row(
+    mean = ind_sum$random$Subject$Estimate[1],
+    sd = sd_determination(ind_sum$random$Subject$Estimate[1], ind_sum$random$Subject$`u-95% CI`[1], ind_sum$random$Subject$`l-95% CI`[1]),
+    var = "Random_intercept"
+  ) %>%
+  add_row(
+    mean = ind_sum$random$Subject$Estimate[2],
+    sd = sd_determination(ind_sum$random$Subject$Estimate[2], ind_sum$random$Subject$`u-95% CI`[2], ind_sum$random$Subject$`l-95% CI`[2]),
+    var = "Random_Contrast_LWPD_Congruency"
+  ) %>%
+  add_row(
+    mean = ind_sum$random$Subject$Estimate[3],
+    sd = sd_determination(ind_sum$random$Subject$Estimate[3], ind_sum$random$Subject$`u-95% CI`[3], ind_sum$random$Subject$`l-95% CI`[3]),
+    var = "Random_Contrast_LWPD_Listwide"
+  ) %>%
+  add_row(
+    mean = ind_sum$random$Subject$Estimate[4],
+    sd = sd_determination(ind_sum$random$Subject$Estimate[4], ind_sum$random$Subject$`u-95% CI`[4], ind_sum$random$Subject$`l-95% CI`[4]),
+    var = "Random_Contrast_LWPD_LW_Block"
+  ) %>%
+  add_row(
+    mean = ind_sum$random$Item$Estimate[1],
+    sd = sd_determination(ind_sum$random$Item$Estimate[1], ind_sum$random$Item$`u-95% CI`[1], ind_sum$random$Item$`l-95% CI`[1]),
+    var = "Item"
+  ) 
+  
+# next we get this stuff into stan variables
+
+stan_vars <- stanvar(prior_tib[prior_tib$var == "Fixed_Intercept", ]$mean ,name = 'Fixed_Intercept_mean') +
+  stanvar(prior_tib[prior_tib$var == "Fixed_Intercept", ]$sd ,name = 'Fixed_Intercept_sd') +
+  stanvar(prior_tib[prior_tib$var == "sigma", ]$mean ,name = 'sigma_mean') +
+  stanvar(prior_tib[prior_tib$var == "sigma", ]$sd ,name = 'sigma_sd') +
+  stanvar(prior_tib[prior_tib$var == "ndt", ]$mean ,name = 'ndt_mean') +
+  stanvar(prior_tib[prior_tib$var == "ndt", ]$sd ,name = 'ndt_sd') +
+  stanvar(prior_tib[prior_tib$var == "Fixed_Contrast_LWPD_Congruency", ]$mean ,name = 'Fixed_Contrast_LWPD_Congruency_mean') +
+  stanvar(prior_tib[prior_tib$var == "Fixed_Contrast_LWPD_Congruency", ]$sd ,name = 'Fixed_Contrast_LWPD_Congruency_sd') +
+  stanvar(prior_tib[prior_tib$var == "Fixed_Contrast_LWPD_Listwide", ]$mean ,name = 'Fixed_Contrast_LWPD_Listwide_mean') +
+  stanvar(prior_tib[prior_tib$var == "Fixed_Contrast_LWPD_Listwide", ]$sd ,name = 'Fixed_Contrast_LWPD_Listwide_sd') +
+  stanvar(prior_tib[prior_tib$var == "Fixed_Contrast_LWPD_LW_Block", ]$mean ,name = 'Fixed_Contrast_LWPD_LW_Block_mean') +
+  stanvar(prior_tib[prior_tib$var == "Fixed_Contrast_LWPD_LW_Block", ]$sd ,name = 'Fixed_Contrast_LWPD_LW_Block_sd') +
+  stanvar(prior_tib[prior_tib$var == "Random_intercept", ]$mean ,name = 'Random_intercept_mean') +
+  stanvar(prior_tib[prior_tib$var == "Random_intercept", ]$sd ,name = 'Random_intercept_sd') +
+  stanvar(prior_tib[prior_tib$var == "Random_Contrast_LWPD_Congruency", ]$mean ,name = 'Random_Contrast_LWPD_Congruency_mean') +
+  stanvar(prior_tib[prior_tib$var == "Random_Contrast_LWPD_Congruency", ]$sd ,name = 'Random_Contrast_LWPD_Congruency_sd') +
+  stanvar(prior_tib[prior_tib$var == "Random_Contrast_LWPD_Listwide", ]$mean ,name = 'Random_Contrast_LWPD_Listwide_mean') +
+  stanvar(prior_tib[prior_tib$var == "Random_Contrast_LWPD_Listwide", ]$sd ,name = 'Random_Contrast_LWPD_Listwide_sd') +
+  stanvar(prior_tib[prior_tib$var == "Random_Contrast_LW_Block", ]$mean ,name = 'Random_Contrast_LW_Block_mean') +
+  stanvar(prior_tib[prior_tib$var == "Random_Contrast_LW_Block", ]$sd ,name = 'Random_Contrast_LW_Block_sd') +
+  stanvar(prior_tib[prior_tib$var == "Item", ]$mean ,name = 'Item_mean') +
+  stanvar(prior_tib[prior_tib$var == "Item", ]$sd ,name = 'Item_sd')
+
+# now put in our variables into the prior
+prior_informed_LW <- c(
+  prior(normal(Fixed_Intercept_mean, Fixed_Intercept_sd), class = Intercept), # group effect non-decision time CO is 0 in the contrast we assume on average 200ms
+  prior(normal(sigma_mean, sigma_sd), class = sigma), 
+  prior(normal(ndt_mean, ndt_sd), class = ndt),
+  prior(lkj(1), class = cor), # use default prior for the correlation 
+  prior(lkj(1), class = cor, group = Subject),
+  prior(normal(Fixed_Contrast_LWPD_Congruency_mean, Fixed_Contrast_LWPD_Congruency_sd), class = b, coef = Contrast_LWPD_Congruency), # Priors of Contrasts for PD patients
+  prior(normal(Fixed_Contrast_LWPD_Listwide_mean, Fixed_Contrast_LWPD_Listwide_sd), class = b, coef = Contrast_LWPD_Listwide),
+  prior(normal(Fixed_Contrast_LWPD_LW_Block_mean, Fixed_Contrast_LWPD_LW_Block_sd), class = b, coef = Contrast_LWPD_LW_Block),
+  prior(normal(Random_intercept_mean, Random_intercept_sd), class = sd, coef = Intercept, group = Subject),
+  prior(normal(Random_Contrast_LWPD_Congruency_mean, Random_Contrast_LWPD_Congruency_sd), class = sd, coef = Contrast_LWPD_Congruency, group = Subject),
+  prior(normal(Random_Contrast_LWPD_Listwide_mean, Random_Contrast_LWPD_Listwide_sd), class = sd, coef = Contrast_LWPD_Listwide, group = Subject),
+  prior(normal(Random_Contrast_LW_Block_mean, Random_Contrast_LW_Block_sd), class = sd, coef = Contrast_LWPD_LW_Block, group = Subject),
+  prior(normal(Item_mean, Item_sd), class = sd, coef = Intercept, group = Item)
+)
+
+fit_ShiftedLog_PDOnly_diagnostic_LW <- brm(formula = m2_PD_LW ,
+                                        family = shifted_lognormal(),
+                                        data = Data_y_diagnostic_LWPC,
+                                        prior = prior_informed_LW,
+                                        warmup = 2000,
+                                        iter = 12000,# 20000 is the limit necessary for bridge sampling
+                                        cores = 4, seed = 423,
+                                        control = list(adapt_delta = 0.95),
+                                        stanvars=stan_vars,
+                                        #save_pars = save_pars(all = TRUE), # must be set to true for bridgesampling
+                                        chains =4
+)
+
+save(fit_ShiftedLog_PDOnly_diagnostic_LW, file = "fit_ShiftedLog_PDOnly_diagnostic_LW.rda")
