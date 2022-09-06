@@ -76,7 +76,7 @@ eeglab
 
 % Load one dataset to get parameters for wavelet anaylsis
 sub                          = 3;
-fileID                       = strcat(Participant_IDs{sub}, '_epoched_freq.set'); %get file ID
+fileID                       = strcat(Participant_IDs{sub}, '_epoched_freq_SLplc.set'); %get file ID
 folderID                     = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
 EEG                          = pop_loadset('filename', fileID,'filepath',[folderID]); % load file
 
@@ -133,7 +133,7 @@ whole_trl_bsl =  dsearchn(EEG.times',[-200 1000]'); % we use the whole epoch bef
 
 for sub = 2:Part_N
     %load data set
-    fileID              = strcat(Participant_IDs{sub}, '_epoched_freq.set'); %get file ID
+    fileID              = strcat(Participant_IDs{sub}, '_epoched_freq_SLplc.set'); %get file ID
     folderID            = fullfile(dirs.home,Participant_IDs{sub});%get folder ID
     EEG                 = pop_loadset('filename', fileID,'filepath',[folderID]); % load file
     % resample to reduce the size of our dataset
