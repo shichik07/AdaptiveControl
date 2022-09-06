@@ -34,13 +34,13 @@ for i=1:EEG.trials
             % For the following item specific effect, we only consider the
             % inducer items because there was no measurable effect in the
             % diagnostic items
-        elseif (EEG.epoch(i).eventanalysetype{onset} == "main_incon") && (EEG.epoch(i).eventtrial{onset} == "inducer")
+        elseif EEG.epoch(i).eventanalysetype{onset} == "main_incon"
             if EEG.epoch(i).eventcongruency{onset} == "incongruent"
                 Items.ISPC_MI_I(end+1) = i;
             else
                 Items.ISPC_MI_C(end+1) = i;
             end
-        elseif (EEG.epoch(i).eventanalysetype{onset}) == "main_con"  && (EEG.epoch(i).eventtrial{onset} == "inducer")
+        elseif EEG.epoch(i).eventanalysetype{onset} == "main_con"
             if EEG.epoch(i).eventcongruency{onset} == "incongruent"
                 Items.ISPC_MC_I(end+1) = i;
             else
