@@ -18,6 +18,7 @@ set.seed(32923)
 
 #Load the data 
 filename <- "C:/Users/doex9445/Dateien/Julius/AdaptiveControl/Data/All_subjects.csv"
+save_path <- "C:/Users/doex9445/Dateien/Julius/AdaptiveControl/Figures/Behavior/"
 AdapCon <- read.csv(file = filename)
 
 # Get Items, and name blocks correctly
@@ -119,6 +120,9 @@ rbp + ggsignif::geom_signif(
   manual = TRUE,
   textsize = 3.5, vjust = 1.8, tip_length = - 0.02 
 )
+save_n <- "Descriptive_RT.png"
+
+ggsave(path = save_path, filename = save_n,  dpi=300)
 
 ## Now let us plot error rates!
 
@@ -172,7 +176,7 @@ anno_df <- data.frame(
   PANEL = rep(seq(1,4,by = 1), times = 1, each = 2),
   start = rep(x_pos1, times = 4, each = 1), # set the starting point of the comparison
   end   = rep(x_pos2, times = 4, each = 1), # set the starting point of the comparison
-  y_pos = 0.08, # on the y-axis
+  y_pos = 0.08, # on the y-axisS
   label = as.factor(paste(Dif_Error$Error_Dif, ' %')),
   Congruency = c("congruent", "incongruent"), 
   Measure = c("MC", "MI"),
@@ -189,3 +193,7 @@ error_bp + ggsignif::geom_signif(
   manual = TRUE,
   textsize = 3.5, vjust = - 0.8, tip_length = 0.02 
 )
+
+save_n <- "Descriptive_Error.png"
+
+ggsave(path = save_path, filename = save_n,  dpi=300)
