@@ -1,5 +1,9 @@
-# Analysis on the behavioral data of healthy control participants and participants with Parkinson's disease
-setwd('C:/Users/doex9445/Dateien/Julius/AdaptiveControl/Data')
+#####
+# Author: Julius Kricheldorff
+# Analysis Behavioral Data Errors - calculate Bayes_Factors for each Model Term
+
+####
+setwd('E:/AdaptiveControl/Data/BehaviorResults')
 
 # Load packages
 library(brms)
@@ -9,11 +13,12 @@ library(haven)
 library(hypr)
 library(rstan)# package to generate contrasts
 library(StanHeaders)
+library(rstudioapi)
 
 #library(chkptstanr) #package to interupt and restart sampling with stanr/brmslibrary(posterior)
 
 # Set a seed for sake of reproducibility
-set.seed(32946)
+set.seed(32936)
 
 #Load the data 
 
@@ -70,33 +75,95 @@ Data <- df %>%
   )) %>%
   filter( RT > 200) # Remove data with small RT, otherwise messes with our non-decision parameter
 
-# Contrasts only for the list-wide effect only
-StroopCon_LW <- hypr(
-  CO_Congruency = (CO_LW_incon_C + CO_LW_con_C)/2 ~ (CO_LW_con_I + CO_LW_incon_I)/2, # main effect Congruence healthy controls
-  CO_Listwide = (CO_LW_con_C + CO_LW_con_I)/2 ~ (CO_LW_incon_C + CO_LW_incon_I)/2, # main effect Block Listwide control
-  CO_LW_Block = (CO_LW_incon_I - CO_LW_incon_C)/2 ~ (CO_LW_con_I - CO_LW_con_C)/2, # interaction listwide effect
-  PD_Congruency = (PD_LW_incon_C + PD_LW_con_C)/2 ~ (PD_LW_con_I + PD_LW_incon_I)/2, # main effect Congruence healthy controls
-  PD_Listwide = (PD_LW_con_C + PD_LW_con_I)/2 ~ (PD_LW_incon_C + PD_LW_incon_I)/2, # main effect Block Listwide control
-  PD_LW_Block = (PD_LW_incon_I - PD_LW_incon_C)/2 ~ (PD_LW_con_I - PD_LW_con_C)/2, # interaction listwide effect
-  levels = c("CO_LW_con_C", "CO_LW_con_I", "CO_LW_incon_I", "CO_LW_incon_C", 
-             "PD_LW_incon_I", "PD_LW_incon_C", "PD_LW_con_C", "PD_LW_con_I")
-)
-StroopCon_LW
 
-# Contrasts for the Item-specific effects only - check that later (might be more difficult)
-StroopCon_IS <- hypr(
-  CO_Congruency = (CO_IS_incon_C + CO_IS_con_C)/2 ~ (CO_IS_con_I + CO_IS_incon_I)/2, # main effect Congruence healthy controls
-  CO_Itemspecific = (CO_IS_con_C + CO_IS_con_I)/2 ~ (CO_IS_incon_C + CO_IS_incon_I)/2, # main effect Block Listwide control
-  CO_IS_Block = (CO_IS_incon_I - CO_IS_incon_C)/2 ~ (CO_IS_con_I - CO_IS_con_C)/2, # interaction listwide effect
-  PD_Congruency = (PD_IS_incon_C + PD_IS_con_C)/2 ~ (PD_IS_con_I + PD_IS_incon_I)/2, # main effect Congruence healthy controls
-  PD_Itemspecific = (PD_IS_con_C + PD_IS_con_I)/2 ~ (PD_IS_incon_C + PD_IS_incon_I)/2, # main effect Block Listwide control
-  PD_IS_Block = (PD_IS_incon_I - PD_IS_incon_C)/2 ~ (PD_IS_con_I - PD_IS_con_C)/2, # interaction listwide effect
-  levels = c("CO_IS_incon_I", "CO_IS_con_I", "CO_IS_con_C", "CO_IS_incon_C", 
-             "PD_IS_con_C", "PD_IS_con_I", "PD_IS_incon_I", "PD_IS_incon_C")
-)
-StroopCon_IS
 
-# Now we create an extra column for the contrasts for the List wide effect
+# Define formulas so we can loop through them
+LW_formulas <- c(
+  formula((CO_LW_incon_C + CO_LW_con_C)/2 ~ (CO_LW_con_I + CO_LW_incon_I)/2), # main effect Congruence healthy controls
+  formula((CO_LW_con_C + CO_LW_con_I)/2 ~ (CO_LW_incon_C + CO_LW_incon_I)/2), # main effect Block Listwide control
+  formula((CO_LW_incon_I - CO_LW_incon_C)/2 ~ (CO_LW_con_I - CO_LW_con_C)/2), # interaction listwide effect
+  formula((PD_LW_incon_C + PD_LW_con_C)/2 ~ (PD_LW_con_I + PD_LW_incon_I)/2), # main effect Congruence healthy controls
+  formula((PD_LW_con_C + PD_LW_con_I)/2 ~ (PD_LW_incon_C + PD_LW_incon_I)/2), # main effect Block Listwide control
+  formula((PD_LW_incon_I - PD_LW_incon_C)/2 ~ (PD_LW_con_I - PD_LW_con_C)/2)
+)
+
+# contrast names seperately
+LW_contrast_names <- c(
+  "CO_Congruency",
+  "CO_Listwide",
+  "CO_LW_Block",
+  "PD_Congruency",
+  "PD_Listwide",
+  "PD_LW_Block"
+)
+
+# LW levels
+LW_levels <- c("CO_LW_con_C", "CO_LW_con_I", "CO_LW_incon_I", "CO_LW_incon_C", 
+               "PD_LW_incon_I", "PD_LW_incon_C", "PD_LW_con_C", "PD_LW_con_I")
+
+# same for the IS effect
+IS_formulas <-c(
+  formula((CO_IS_incon_C + CO_IS_con_C)/2 ~ (CO_IS_con_I + CO_IS_incon_I)/2), # main effect Congruence healthy controls
+  formula((CO_IS_con_C + CO_IS_con_I)/2 ~ (CO_IS_incon_C + CO_IS_incon_I)/2), # main effect Block Listwide control
+  formula((CO_IS_incon_I - CO_IS_incon_C)/2 ~ (CO_IS_con_I - CO_IS_con_C)/2), # interaction listwide effect
+  formula((PD_IS_incon_C + PD_IS_con_C)/2 ~ (PD_IS_con_I + PD_IS_incon_I)/2), # main effect Congruence healthy controls
+  formula((PD_IS_con_C + PD_IS_con_I)/2 ~ (PD_IS_incon_C + PD_IS_incon_I)/2), # main effect Block Listwide control
+  formula((PD_IS_incon_I - PD_IS_incon_C)/2 ~ (PD_IS_con_I - PD_IS_con_C)/2) # interaction listwide effect
+)
+
+# contrast names seperately
+IS_contrast_names <- c(
+  "CO_Congruency",
+  "CO_Itemspecific",
+  "CO_IS_Block",
+  "PD_Congruency",
+  "PD_Itemspecific",
+  "PD_IS_Block"
+)
+
+# IS levels
+IS_levels <- c("CO_IS_incon_I", "CO_IS_con_I", "CO_IS_con_C", "CO_IS_incon_C", 
+               "PD_IS_con_C", "PD_IS_con_I", "PD_IS_incon_I", "PD_IS_incon_C")
+
+LW_mods <- c("LW_min_CO_Congruency", 
+             "LW_min_CO_Listwide",
+             "LW_min_CO_LW_Block",
+             "LW_min_PD_Congruency",
+             "LW_min_PD_Listwide",
+             "LW_min_PD_LW_Block")
+
+IS_mods <- c("IS_min_CO_Congruency", 
+             "IS_min_CO_Listwide",
+             "IS_min_CO_LW_Block",
+             "IS_min_PD_Congruency",
+             "IS_min_PD_Listwide",
+             "IS_min_PD_LW_Block")
+
+# First let us get the listwide model contrasts
+for(mods in 1:length(LW_mods)){
+  # first create the contrast matrix
+  temp_mat <- hypr(LW_formulas[-mods],
+                   levels = LW_levels)
+  # next add the appropriate variable names
+  names(temp_mat) <- LW_contrast_names[-mods]
+  
+  # Lastly rename the contrast matrix
+  assign(LW_mods[mods], temp_mat)
+}
+
+# Now the same for the Itemspecific model contrasts
+for(mods in 1:length(IS_mods)){
+  # first create the contrast matrix
+  temp_mat <- hypr(IS_formulas[-mods],
+                   levels = IS_levels)
+  # next add the appropriate variable names
+  names(temp_mat) <- IS_contrast_names[-mods]
+  
+  # Lastly rename the contrast matrix
+  assign(IS_mods[mods], temp_mat)
+}
+
+# Now we create an extra column for the contrasts for the List wide effect 
 Data <- Data %>%
   mutate(Contrast_LW = case_when(
     Analysis_type == "MC" & Congruency == "congruent"  & Exp_group == "CO" ~ "CO_LW_con_C",
@@ -109,11 +176,6 @@ Data <- Data %>%
     Analysis_type == "MI" & Congruency == "incongruent"  & Exp_group == "PD" ~ "PD_LW_incon_I",
   )) %>%
   mutate(Contrast_LW  = as_factor(Contrast_LW)) 
-
-# assign the generated contrast matrix to the List Wide Factor
-contrasts(Data$Contrast_LW) <- contr.hypothesis(StroopCon_LW)
-
-contrasts(Data$Contrast_LW)    
 
 # Now we create an extra column for the contrasts for the Item Specific effect
 Data <- Data %>%
@@ -129,55 +191,41 @@ Data <- Data %>%
   )) %>%
   mutate(Contrast_IS  = as_factor(Contrast_IS))
 
-# assign the generated contrast matrix to the Item Specific Factor
-contrasts(Data$Contrast_IS) <- contr.hypothesis(StroopCon_IS)
-
-contrasts(Data$Contrast_IS)    
-
 
 # Filter only young participants, remove practice trials and only keep correct trials
 Data_y_inducer_LWPC <- Data %>%
   dplyr::filter(Exp_group != "CY") %>% # only Control and old
   dplyr::filter(Item_specific == "List_wide") %>% # only Listwide items
   dplyr::filter(Block != 'practice') %>% # no practice trials
-  dplyr::filter(Correct_A == 1) %>% # only correct responses
   dplyr::filter(Trl_type != "Diagnostic")%>%
+  dplyr::filter(Correct_A == 1) %>% # only correct responses
   mutate(Exp_group  = as_factor(Exp_group)) 
-
-contrasts(Data_y_inducer_LWPC$Contrast_LW) 
 
 Data_y_diagnostic_LWPC <- Data %>%
   dplyr::filter(Exp_group != "CY") %>% # Control and old
   dplyr::filter(Item_specific == "List_wide") %>% # only Listwide items
   dplyr::filter(Block != 'practice') %>% # no practice trials
-  dplyr::filter(Correct_A == 1) %>% # only correct responses
   dplyr::filter(Trl_type == "Diagnostic")%>%
+  dplyr::filter(Correct_A == 1) %>% # only correct responses
   mutate(Exp_group  = as_factor(Exp_group))
 
 Data_y_inducer_ISPC <- Data %>%
   dplyr::filter(Exp_group != "CY") %>% # only Control and old
   dplyr::filter(Item_specific == "Item_spec") %>% # only Item_specific items
   dplyr::filter(Block != 'practice') %>% # no practice trials
-  dplyr::filter(Correct_A == 1) %>% # only correct responses
   dplyr::filter(Trl_type != "Diagnostic")%>%
+  dplyr::filter(Correct_A == 1) %>% # only correct responses
   mutate(Exp_group  = as_factor(Exp_group))
-
-
-contrasts(Data_y_inducer_LWPC$Contrast_IS) 
 
 Data_y_diagnostic_ISPC <- Data %>%
   dplyr::filter(Exp_group != "CY") %>% # Control and old
   dplyr::filter(Item_specific == "Item_spec") %>% # only Item_specific items
   dplyr::filter(Block != 'practice') %>% # no practice trials
-  dplyr::filter(Correct_A == 1) %>% # only correct responses
   dplyr::filter(Trl_type == "Diagnostic")%>%
+  dplyr::filter(Correct_A == 1) %>% # only correct responses
   mutate(Exp_group  = as_factor(Exp_group))
 
-# now that the data is prepared let us create our priors
-# write down priors - intercept with a mean of 6 and a standard deviation of one seems reasonable exp(5) =150ms exp(7 = 1096ms), values that seem plausible
-# for each of the effects we are careful and will assume a normal distribution centered around 0, with a standard deviation of 0.5. I derived at these values by means of prior predictive simulations
-
-
+# Same priors as for the model before
 
 # Prior informed weakly List wide
 prior_weakly_informed_LW <- c(
@@ -216,50 +264,92 @@ prior_weakly_informed_IS <- c(
 m1_LW <- bf(RT ~ 1  + Contrast_LW + (1|Subject) + (1|Item),
             ndt ~  0 + Exp_group)
 
-
 # brmsformula object Item Specific
 m1_IS <- bf(RT ~ 1  + Contrast_IS + (1|Subject) + (1|Item),
             ndt ~  0 + Exp_group) 
 
-#### Fit Inducer Models ####
-
-# path where we save intermediate steps
-#path <- create_folder(folder_name  = "chkpt_folder_fit_inducer_model")
-
-# we should consider varying non-decision times between the groups
-fit_inducer_model_LW <- brm(formula = m1_LW,
-                            family = shifted_lognormal(),
-                            data = Data_y_inducer_LWPC,
-                            prior = prior_weakly_informed_LW,
-                            warmup = 2000,
-                            iter = 12000,# 20000 is the limit necessary for bridge sampling
-                            cores = 4, seed = 423,
-                            control = list(adapt_delta = 0.9),
-                            save_pars = save_pars(all = TRUE), # must be set to true for bridgesampling
-                            chains =4
-)
-save(fit_inducer_model_LW, file = "fit_inducer_model_LW.rda")
+# okay create a function to pass model parameter
+pass_brms = function(save_name, prior, data, model) {
+  fit_model <- brm(formula = model,
+                   family = shifted_lognormal(),
+                   data = data,
+                   prior = prior,
+                   warmup = 2000,
+                   iter = 12000,# 20000 is the limit necessary for bridge sampling
+                   cores = 4, seed = 423,
+                   control = list(adapt_delta = 0.95),
+                   save_pars = save_pars(all = TRUE), # must be set to true for bridgesampling
+                   chains =4)
+  
+  # save the model
+  save(fit_model, file = save_name)
+}
 
 
-fit_inducer_model_IS <- brm(formula = m1_IS,
-                            family = shifted_lognormal(),
-                            data = Data_y_inducer_ISPC,
-                            prior = prior_weakly_informed_IS,
-                            warmup = 2000,
-                            iter = 12000,# 20000 is the limit necessary for bridge sampling
-                            cores = 4, seed = 412,
-                            control = list(adapt_delta = 0.9),
-                            save_pars = save_pars(all = TRUE), # must be set to true for bridgesampling
-                            chains =4
-)
+##### now let us loop though our models and save the results for the listwide models
 
-save(fit_inducer_model_IS, file = "fit_inducer_model_IS.rda")
+for(mods in 1:length(LW_mods)){
+  # first assign appropriate contrasts to our dataset 
+  contrasts(Data_y_inducer_LWPC$Contrast_LW) <- contr.hypothesis(eval(parse(text = LW_mods[mods])))
+  # define prior
+  LW_weakly <- prior_weakly_informed_LW[-(mods+4),]
+  # get save name for variable
+  save_name <- paste("fit_shifted_inducer_", LW_mods[mods], ".rda", sep = "")
+  # fit the model
+  pass_brms(save_name = save_name, prior = LW_weakly, data = Data_y_inducer_LWPC, model = m1_LW)
+} 
+
+# Now the same with the item specific models
+for(mods in 1:length(IS_mods)){
+  # first assign appropriate contrasts to our dataset 
+  contrasts(Data_y_inducer_ISPC$Contrast_IS) <- contr.hypothesis(eval(parse(text = IS_mods[mods])))
+  # define prior
+  IS_weakly <- prior_weakly_informed_IS[-(mods+4),]
+  # get save name for variable
+  save_name <- paste("fit_shifted_inducer_", IS_mods[mods], ".rda", sep = "")
+  # fit the model
+  pass_brms(save_name = save_name, prior = IS_weakly, data = Data_y_inducer_ISPC, model = m1_IS)
+  
+}
+
+# Lastly is the addition of the ndt distinction by group relevant
+temp_hyp_LW <- hypr(LW_formulas,
+                 levels = LW_levels)
+temp_hyp_IS <- hypr(IS_formulas,
+                    levels = IS_levels)
+# next add the appropriate variable names
+names(temp_hyp_LW) <- LW_contrast_names
+names(temp_hyp_IS) <- IS_contrast_names
+# Lastly rename the contrast matrix
+assign("LW_shifted_log_ndt", temp_hyp_LW)
+assign("IS_shifted_log_ndt", temp_hyp_IS)
+#assign contrasts to data
+contrasts(Data_y_inducer_ISPC$Contrast_IS) <- contr.hypothesis(IS_shifted_log_ndt)
+contrasts(Data_y_inducer_LWPC$Contrast_LW) <- contr.hypothesis(LW_shifted_log_ndt)
+# models
+m1_LW_ndt <- bf(RT ~ 1  + Contrast_LW + (1|Subject) + (1|Item))
+m1_IS_ndt <- bf(RT ~ 1  + Contrast_IS + (1|Subject) + (1|Item)) 
+
+# define prior
+LW_weakly <- prior_weakly_informed_LW[-(3:4),]
+append(LW_weakly, prior(cauchy(0, 5), class = ndt))
+IS_weakly <- prior_weakly_informed_IS[-(3:4),]
+append(IS_weakly, prior(cauchy(0, 5), class = ndt))
+
+# get save_names
+save_name_LW <- paste("fit_shifted_inducer_", "LW_shifted_log_ndt", ".rda", sep = "")
+save_name_IS <- paste("fit_shifted_inducer_", "IS_shifted_log_ndt", ".rda", sep = "")
+
+# Run modesl
+pass_brms(save_name = save_name_LW, prior = LW_weakly, data = Data_y_inducer_LWPC, model = m1_LW_ndt)
+pass_brms(save_name = save_name_IS, prior = IS_weakly, data = Data_y_inducer_ISPC, model = m1_IS_ndt)
 
 
+##### Next let us get the posterior effects for the new prior
 
-#### Fit the Diagnostics ####
-load("fit_inducer_model_LW.rda")
-load("fit_inducer_model_IS.rda")
+# get posterior to inform prior
+load("C:/Users/doex9445/Dateien/Julius/AdaptiveControl/Data/fit_inducer_model_LW.rda")
+load("C:/Users/doex9445/Dateien/Julius/AdaptiveControl/Data/fit_inducer_model_IS.rda")
 ind_sum_LW <- summary(fit_inducer_model_LW)
 ind_sum_IS <- summary(fit_inducer_model_IS)
 
@@ -469,7 +559,7 @@ stan_vars_IS <- stanvar(prior_tib_IS[prior_tib_IS$var == "Fixed_Intercept", ]$me
 
 # now put in our variables into the prior for LW
 prior_informed_LW <- c(
-  prior(normal(Fixed_Intercept_mean, Fixed_Intercept_sd), class = Intercept, lb = 0), 
+  prior(normal(Fixed_Intercept_mean, Fixed_Intercept_sd), class = Intercept), 
   prior(normal(Fixed_Contrast_LWCO_Congruency_mean, Fixed_Contrast_LWCO_Congruency_sd), class = b, coef = Contrast_LWCO_Congruency), # Priors of Contrasts for PD patients
   prior(normal(Fixed_Contrast_LWCO_Listwide_mean, Fixed_Contrast_LWCO_Listwide_sd), class = b, coef = Contrast_LWCO_Listwide),
   prior(normal(Fixed_Contrast_LWCO_LW_Block_mean, Fixed_Contrast_LWCO_LW_Block_sd), class = b, coef = Contrast_LWCO_LW_Block),
@@ -478,14 +568,14 @@ prior_informed_LW <- c(
   prior(normal(Fixed_Contrast_LWPD_LW_Block_mean, Fixed_Contrast_LWPD_LW_Block_sd), class = b, coef = Contrast_LWPD_LW_Block),
   prior(normal(Item_mean, Item_sd), class = sd, coef = Intercept, group = Item),
   prior(normal(Subject_mean, Subject_sd), class = sd, coef = Intercept, group = Subject),
-  prior(normal(Sigma_mean, Sigma_sd), class = sigma, lb = 0),
+  prior(normal(Sigma_mean, Sigma_sd), class = sigma),
   prior(normal(ndt_Exp_groupCO_mean, ndt_Exp_groupCO_sd), class = b, coef = Exp_groupCO, dpar = ndt), 
   prior(normal(ndt_Exp_groupPD_mean, ndt_Exp_groupPD_sd), class = b, coef = Exp_groupPD, dpar = ndt)
 )
 
 # now put in our variables into the prior for IS
 prior_informed_IS <- c(
-  prior(normal(Fixed_Intercept_mean, Fixed_Intercept_sd), class = Intercept, lb = 0), 
+  prior(normal(Fixed_Intercept_mean, Fixed_Intercept_sd), class = Intercept), 
   prior(normal(Fixed_Contrast_ISCO_Congruency_mean, Fixed_Contrast_ISCO_Congruency_sd), class = b, coef = Contrast_ISCO_Congruency), # Priors of Contrasts for PD patients
   prior(normal(Fixed_Contrast_ISCO_Itemspecific_mean, Fixed_Contrast_ISCO_Itemspecific_sd), class = b, coef = Contrast_ISCO_Itemspecific),
   prior(normal(Fixed_Contrast_ISCO_IS_Block_mean, Fixed_Contrast_ISCO_IS_Block_sd), class = b, coef = Contrast_ISCO_IS_Block),
@@ -494,102 +584,73 @@ prior_informed_IS <- c(
   prior(normal(Fixed_Contrast_ISPD_IS_Block_mean, Fixed_Contrast_ISPD_IS_Block_sd), class = b, coef = Contrast_ISPD_IS_Block),
   prior(normal(Item_mean, Item_sd), class = sd, coef = Intercept, group = Item),
   prior(normal(Subject_mean, Subject_sd), class = sd, coef = Intercept, group = Subject),
-  prior(normal(Sigma_mean, Sigma_sd), class = sigma, lb = 0),
+  prior(normal(Sigma_mean, Sigma_sd), class = sigma),
   prior(normal(ndt_Exp_groupCO_mean, ndt_Exp_groupCO_sd), class = b, coef = Exp_groupCO, dpar = ndt), 
   prior(normal(ndt_Exp_groupPD_mean, ndt_Exp_groupPD_sd), class = b, coef = Exp_groupPD, dpar = ndt)
 )
+# okay create a function to pass model parameter for the informed decisions
+pass_brms_informed = function(save_name, prior, data, model, stanvariables) {
+  fit_model <- brm(formula = model,
+                   family = shifted_lognormal(),
+                   data = data,
+                   prior = prior,
+                   warmup = 2000,
+                   iter = 12000,# 20000 is the limit necessary for bridge sampling
+                   cores = 4, seed = 423,
+                   control = list(adapt_delta = 0.95),
+                   save_pars = save_pars(all = TRUE),# must be set to true for bridgesampling
+                   stanvars = stanvariables,
+                   chains =4)
+  
+  # save the model
+  save(fit_model, file = save_name)
+}
 
+##### now let us loop though our models and save the results for the listwide models
 
-# we should consider varying non-decision times between the groups
-fit_inducer_model_LW_Diagnostics <- brm(formula = m1_LW,
-                            family = shifted_lognormal(),
-                            data = Data_y_diagnostic_LWPC,
-                            prior = prior_informed_LW,
-                            warmup = 2000,
-                            iter = 12000,# 20000 is the limit necessary for bridge sampling
-                            cores = 4, seed = 4233,
-                            control = list(adapt_delta = 0.9),
-                            stanvars = stan_vars_LW,
-                            save_pars = save_pars(all = TRUE), # must be set to true for bridgesampling
-                            chains =4
-)
+for(mods in 1:length(LW_mods)){
+  # first assign appropriate contrasts to our dataset 
+  contrasts(Data_y_diagnostic_LWPC$Contrast_LW) <- contr.hypothesis(eval(parse(text = LW_mods[mods])))
+  # define prior
+  LW_informed <- prior_informed_LW[-(mods+1),]
+  # get save name for variable
+  save_name <- paste("fit_shifted_diagnostic_", LW_mods[mods], ".rda", sep = "")
+  # fit the model
+  pass_brms_informed(save_name = save_name, prior =  LW_informed, 
+                     data = Data_y_diagnostic_LWPC, model = m1_LW, stanvariables = stan_vars_LW)
+} 
 
-save(fit_inducer_model_LW_Diagnostics, file = "fit_inducer_model_LW_Diagnostics.rda")
+# Now the same with the item specific models
+for(mods in 1:length(IS_mods)){
+  # first assign appropriate contrasts to our dataset 
+  contrasts(Data_y_diagnostic_ISPC$Contrast_IS) <- contr.hypothesis(eval(parse(text = IS_mods[mods])))
+  # define prior
+  IS_informed <- prior_informed_IS[-(mods+1),]
+  # get save name for variable
+  save_name <- paste("fit_shifted_diagnostic_", IS_mods[mods], ".rda", sep = "")
+  # fit the model
+  pass_brms_informed(save_name = save_name, prior = IS_informed, 
+                     data = Data_y_diagnostic_ISPC, model = m1_IS, stanvariables = stan_vars_IS)
+  
+} 
 
-fit_inducer_model_IS_Diagnostics <- brm(formula = m1_IS,
-                            family = shifted_lognormal(),
-                            data = Data_y_diagnostic_ISPC,
-                            prior = prior_informed_IS,
-                            warmup = 2000,
-                            iter = 12000,# 20000 is the limit necessary for bridge sampling
-                            cores = 4, seed = 4112,
-                            control = list(adapt_delta = 0.9),
-                            stanvars = stan_vars_IS,
-                            save_pars = save_pars(all = TRUE), # must be set to true for bridgesampling
-                            chains =4
-)
+# ANd the same for the ndt models
 
-save(fit_inducer_model_IS_Diagnostics, file = "fit_inducer_model_IS_Diagnostics.rda")
+contrasts(Data_y_diagnostic_ISPC$Contrast_IS) <- contr.hypothesis(IS_shifted_log_ndt)
+contrasts(Data_y_diagnostic_LWPC$Contrast_LW) <- contr.hypothesis(LW_shifted_log_ndt)
 
+# define prior
+LW_informed <- prior_informed_LW[-(11:12),]
+append(LW_informed, prior(normal(5.3, 0.5), class = ndt))
+IS_informed <- prior_informed_IS[-(11:12),]
+append(IS_informed, prior(normal(5.3, 0.5), class = ndt))
 
-#### END Fit Diagnostics
+# get save_names
+save_name_LW <- paste("fit_shifted_diagnostic_", "LW_shifted_log_ndt", ".rda", sep = "")
+save_name_IS <- paste("fit_shifted_diagnostic_", "IS_shifted_log_ndt", ".rda", sep = "")
 
-# NEXT EXTRACT pARAMETER ESTIMATES OF THE INDUCER MODEL FOR THE NEXT PRIOR
-load("fit_inducer_model_LW.rda") # Load data
-
-# get variable names
-get_variables(fit_inducer_model_LW)
-
-post <- as_draws_array(fit_inducer_model_LW) # get posterior parameter samples
-
-post$
-quantile(post$b_intercept, probs = c(.025, .975))
-
-prior_informed_LW <- prior(
-  prior(student_t(3, 6.5, 0.5), class = Intercept),
-  prior(cauchy(0,0.5), class = sigma), 
-  prior(cauchy(0, 5), class = b, coef = Exp_groupCO, dpar = ndt), # group effect non-decision time CO is 0 in the contrast we assume on average 200ms
-  prior(cauchy(0, 5), class = b, coef = Exp_groupPD, dpar = ndt), # group effect non-decision time CO is 0 in the contrast we assume on average 200ms
-  prior(normal(0,0.5), class = b, coef = Contrast_ISCO_Congruency), # Priors of Contrasts for CO
-  prior(normal(0,0.5), class = b, coef = Contrast_ISCO_Itemspecific),
-  prior(normal(0,0.5), class = b, coef = Contrast_ISCO_IS_Block),
-  prior(normal(0,0.5), class = b, coef = Contrast_ISPD_Congruency), # Priors of Contrasts for PD patients
-  prior(normal(0,0.5), class = b, coef = Contrast_ISPD_Itemspecific),
-  prior(normal(0,0.5), class = b, coef = Contrast_ISPD_IS_Block),
-  prior(normal(0,0.5), class = sd, coef = Intercept, group = Subject),
-  prior(normal(0,0.5), class = sd, coef = Intercept, group = Item)
-)
-# # load model again
-# load("fit_inducer_model.rda")
-# # Check fit
-# fit_inducer_model_LW 
-# pp_check(fit_inducer_model_LW, ndraws = 100) 
-# 
-# # Get estimate of conditional effects by model for comparison
-# con_eff <- conditional_effects(fit_inducer_model_LW)
-# a <- con_eff$Contrast_F
-# a$estimate__
-# 
-# 
-# # doesn't work - check r installation
-# #pp_check(fit_inducer_model_LW, type = "stat", stat = "min")
-# #pp_check(fit_inducer_model, type = "stat", stat = "max")
-# #pp_check(fit_inducer_model, type = "stat", stat = "median")
-# pp_check(fit_inducer_model_LW,type = "stat", stat = "median", group = "Exp_group")
-# # check effects
-# mcmc_dens(fit_inducer_model_LW, pars = variables(fit_inducer_model_LW)[1:15])
-
-mcmc_trace(fit_inducer_model_LW, pars = variables(fit_inducer_model_LW)[8:12], window = c(8000,8200),
-           facet_args = list(nrow = 2))
-
-# 
-# # posterior samples aus dem Model entnehmen
-# post <- posterior_samples(fit_inducer_model)
-# 
-# # Haupteffekt Kongruenz ausrechnen (ndt Parameter wird nicht exponentiert und rechnet)
-# Congruency_CO_ms <- exp(post$b_Intercept - 0.5* post$b_Contrast_FCO_Congruency) - exp(post$b_Intercept + 0.5* post$b_Contrast_FCO_Congruency)
-# c(mean = mean(Congruency_CO_ms), quantile(Congruency_CO_ms, probs = c(.025, .975)))
-# 
-# Congruency_PD_ms <- exp(post$b_Intercept - 0.5* post$b_Contrast_FPD_Congruency) - exp(post$b_Intercept + 0.5* post$b_Contrast_FPD_Congruency)
-# c(mean = mean(Congruency_PD_ms), quantile(Congruency_PD_ms, probs = c(.025, .975)))
-
+# Run modesl
+pass_brms_informed(save_name = save_name_LW, prior = LW_informed,
+                   data = Data_y_diagnostic_LWPC, model = m1_LW_ndt, stanvariables = stan_vars_LW)
+pass_brms_informed(save_name = save_name_IS, prior = IS_informed,
+                   data = Data_y_diagnostic_ISPC, model = m1_IS_ndt, stanvariables = stan_vars_IS)
