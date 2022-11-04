@@ -350,15 +350,15 @@ print(xtable(Full_Model_Info_fin, type = "latex"), file = "C:/Users/doex9445/Dat
 
 # Filter only the RT Analysis Results
 
-Full_Model_Info_fin_RT <- Full_Model_Info_fin %>%
-  filter(Model == "RT") %>%
+Full_Model_Info_fin_Acc <- Full_Model_Info_fin %>%
+  filter(Model == "Acc") %>%
   filter(Effect == "LW") %>%
   mutate(mean = round(mean,1)) %>%
   mutate(lower95 = round(lower95,1)) %>%
   mutate(upper95 = round(upper95,1)) %>%
-  mutate(BF = round(BF,2))
+  mutate(BF = BF)
   
-print(xtable(Full_Model_Info_fin_RT, type = "latex"), file = "C:/Users/doex9445/Dateien/Julius/AdaptiveControl/Data/Bheav_Summary_RT.tex")
+print(xtable(Full_Model_Info_fin_Acc, type = "latex"), file = "C:/Users/doex9445/Dateien/Julius/AdaptiveControl/Data/Bheav_Summary_RT.tex")
 
 
 
