@@ -73,7 +73,7 @@ for eff = 1:2
         if freq_type == 1
             freq_name = 'Theta';
             phase_type = 'pl';
-            frequencies2ana         = [4, 7]; % we are interested 4 to 8 Hz
+            frequencies2ana         = [4, 8]; % we are interested 4 to 8 Hz
         else
             freq_name = 'Alpha';
             phase_type = 'pl';
@@ -130,6 +130,8 @@ for eff = 1:2
         % Caluclate Congruency Effects per block
         MI_Con = MI_I - MI_C;
         MC_Con = MC_I - MC_C;
+        
+        M_Stroop_dif = MI_Con - MC_Con;
         
         % Average over 4-8Hz to make it one frequency
         frequencies2ana         = Infos.freqs_base >= frequencies2ana(1) & Infos.freqs_base <= frequencies2ana(2);
@@ -224,7 +226,7 @@ for eff = 1:2
                 cfg.zlim   = [-4 4];
                 cfg.toi    = [-0.600:0.075:0.100];
                 cfg.layout = 'easycapM15.mat';
-                figure
+                f1 = figure;
                 plt = ft_clusterplot_mod(cfg, stat);
                 
                 colormap(flipud(brewermap([], "Rdbu")));
@@ -239,9 +241,97 @@ for eff = 1:2
                 f = gcf;
                 
                 save_n = ['Cluster_', groupname ,'_', eff_name,'_', freq_name,'_interaction_RespL_pl.png'];
-                save_fl = 'C:\Users\doex9445\Dateien\Julius\AdaptiveControl\Figures\fin_dataset\RL_pl';
+                save_fl = 'C:\Users\doex9445\Dateien\Julius\AdaptiveControl\Figures\fin_dataset\RL_npl';
                 save_loc = fullfile(save_fl,save_n);
                 exportgraphics(f, save_loc, 'Resolution', 300)
+                
+                close(f1)
+                 %% Next let us plot the cluster over the active period only 
+                % first we need to identiffy electrodes and timepoints tha
+                % are significant. First for the negative then the positive
+                % clusters.
+                % note, really crappy function - be careful if you have
+                % more than one cluster
+                
+                [min_ind, max_ind, timewin_cl, pos_ele, neg_ele, p_pos, p_neg] = find_cluster(stat, 0.025);
+                times2plot = [0.6];
+                %%get index of time
+                t_ind = Infos.time >= timewin_cl(1) & Infos.time <= timewin_cl(end);
+                %[~,t_ind]  = (min(abs(Infos.time - times2plot)));
+                %index group to plot
+                grp_ind = LW.Group == grp-1;
+                
+                % time indices to plot
+                freqdata2plot = double(squeeze(mean(M_Stroop_dif(:, frequencies2ana, t_ind, grp_ind),4))); % average over participants
+                freqdata2plot = double(squeeze(mean(freqdata2plot,3))); %average over time
+                freqdata2plot = double(squeeze(mean(freqdata2plot,2))); %average over freqeuncies
+                
+               
+                
+                if (~isempty(pos_ele) + ~isempty(neg_ele)) == 2
+                    warning('We have both postive and negative clusters')
+                    break
+                end
+                
+                if ~isempty(pos_ele) == 1
+                    % find index of labeled electrodes
+                    List_one = {Infos.chanlocs.labels};
+                    List_two = pos_ele';
+                    idx=find(ismember(List_one,List_two))
+                    % Plot Topo
+                    f2 = figure
+                    topoplot(freqdata2plot,Infos.chanlocs,'maplimits',[-0.3 0.3], 'electrodes', 'on', 'emarker', {'.','k',{},4}, 'emarker2', {idx,'+','k', 6, 2});
+                    colormap(flipud(brewermap([], "Rdbu")));
+                    h = colorbar;
+                    txt =  num2str(timewin_cl(1)) + "s to " + num2str(timewin_cl(end)) + "s; p = " + num2str(p_pos);
+                    text(-0.3, -0.6,txt,'FontSize',12, 'FontWeight', 'bold')
+                
+                elseif  ~isempty(neg_ele) == 1
+                    % find index of labeled electrodes
+                    List_one = {Infos.chanlocs.labels};
+                    List_two = neg_ele';
+                    idx=find(ismember(List_one,List_two))
+                    % Plot Topo
+                    f2 = figure
+                    topoplot(freqdata2plot,Infos.chanlocs,'maplimits',[-0.3 0.3], 'electrodes', 'on', 'emarker', {'.','k',{},4}, 'emarker2', {idx,'*','k', 6, 1});
+                    colormap(flipud(brewermap([], "Rdbu")));
+                    h = colorbar;
+                    txt =  num2str(timewin_cl(1)) + "s to " + num2str(timewin_cl(end)) + "s; p = " + num2str(p_neg);
+                    text(-0.3, -0.6,txt,'FontSize',12, 'FontWeight', 'bold')
+                
+                elseif  isempty(neg_ele) == 1 & isempty(pos_ele) == 1
+                    t_ind = Infos.time >= -0.6 & Infos.time <= -0.2;
+                    % time indices to plot
+                    freqdata2plot = double(squeeze(mean(M_Stroop_dif(:, frequencies2ana, t_ind, grp_ind),4))); % average over participants
+                    freqdata2plot = double(squeeze(mean(freqdata2plot,3))); %average over time
+                    freqdata2plot = double(squeeze(mean(freqdata2plot,2))); %average over freqeuncies
+                    
+                    % Plot Topo
+                    f2 = figure
+                    topoplot(freqdata2plot,Infos.chanlocs,'maplimits',[-0.3 0.3], 'electrodes', 'on', 'emarker', {'.','k',{},4});
+                    colormap(flipud(brewermap([], "Rdbu")));
+                    h = colorbar;
+                    txt = "-0.6s to -0.2s; p > 0.05 " ;
+                    text(-0.3, -0.6,txt,'FontSize',12, 'FontWeight', 'bold')
+                    
+                end
+                
+             
+                set(h,'Position',[0.9 0.05 0.03 0.9])
+                h.FontSize = 10;
+                h.FontWeight = 'bold';
+                sgt = sgtitle([freq_name, ' Cluster ', umgsprl,' Control: ', groupname ,' Group']);
+                sgt.FontSize = 15;
+                sgt.FontWeight = 'bold';
+               
+                f = gcf;
+                
+                save_n = ['Cluster_', groupname ,'_', eff_name,'_', freq_name,'_interaction_summary_RL_pl.png'];
+                save_fl = 'C:\Users\doex9445\Dateien\Julius\AdaptiveControl\Figures\fin_dataset\RL_npl';
+                save_loc = fullfile(save_fl,save_n);
+                exportgraphics(f, save_loc, 'Resolution', 300)
+                close(f2)
+                
                 
             catch
                 warning('no clusters present with a p-value lower than the specified alpha, nothing to plot');
