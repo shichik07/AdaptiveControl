@@ -159,19 +159,19 @@ a <- get_prior(data = Data_y_inducer_LWPC, m2_PD_LW, family = shifted_lognormal(
 
 # Prior informed weakly List wide
 prior_weakly_informed_LW <- c(
-  prior(student_t(3, 6.5, 0.5), class = Intercept), # group effect non-decision time CO is 0 in the contrast we assume on average 200ms
-  prior(cauchy(0,0.5), class = sigma), 
-  prior(cauchy(0, 5), class = ndt),
+  prior(normal(6.5, 0.5), class = Intercept), # group effect non-decision time CO is 0 in the contrast we assume on average 200ms
+  prior(normal(0,0.5), class = sigma, lb = 0), 
+  prior(normal(5.3, 0.5), class = ndt),
   prior(lkj(1), class = cor), # use default prior for the correlation 
   prior(lkj(1), class = cor, group = Subject),
-  prior(normal(0,0.5), class = b, coef = Contrast_LWPD_Congruency), # Priors of Contrasts for PD patients
-  prior(normal(0,0.5), class = b, coef = Contrast_LWPD_Listwide),
-  prior(normal(0,0.5), class = b, coef = Contrast_LWPD_LW_Block),
-  prior(normal(0, 0.5), class = sd, coef = Intercept, group = Subject),
-  prior(normal(0, 0.5), class = sd, coef = Contrast_LWPD_Congruency, group = Subject),
-  prior(normal(0, 0.5), class = sd, coef = Contrast_LWPD_Listwide, group = Subject),
-  prior(normal(0, 0.5), class = sd, coef = Contrast_LWPD_LW_Block, group = Subject),
-  prior(normal(0, 0.5), class = sd, coef = Intercept, group = Item)
+  prior(normal(0,0.3), class = b, coef = Contrast_LWPD_Congruency), # Priors of Contrasts for CO patients
+  prior(normal(0,0.3), class = b, coef = Contrast_LWPD_Listwide),
+  prior(normal(0,0.3), class = b, coef = Contrast_LWPD_LW_Block),
+  prior(normal(0, 0.3), class = sd, coef = Intercept, group = Subject),
+  prior(normal(0, 0.3), class = sd, coef = Contrast_LWPD_Congruency, group = Subject),
+  prior(normal(0, 0.3), class = sd, coef = Contrast_LWPD_Listwide, group = Subject),
+  prior(normal(0, 0.3), class = sd, coef = Contrast_LWPD_LW_Block, group = Subject),
+  prior(normal(0, 0.3), class = sd, coef = Intercept, group = Item)
 )
 
 fit_ShiftedLog_PDOnly_inducer_LW <- brm(formula = m2_PD_LW ,
@@ -234,13 +234,13 @@ prior_tib <-prior_tib %>%
   ) %>%
   add_row(
     mean = 0, # fixed effect for the interaction has to be centered around 0
-    sd = ind_sum$fixed$Estimate[3] + sd_determination(ind_sum$fixed$Estimate[3], ind_sum$fixed$`u-95% CI`[3], ind_sum$fixed$`l-95% CI`[3]),
-    var = "Fixed_Contrast_LWPD_Listwide"
+    sd = sd_determination(0, ind_sum$fixed$`u-95% CI`[4], ind_sum$fixed$`l-95% CI`[4]),
+    var = "Fixed_Contrast_LWPD_LW_Block"
   ) %>%
   add_row(
-    mean = ind_sum$fixed$Estimate[4],
-    sd = sd_determination(ind_sum$fixed$Estimate[4], ind_sum$fixed$`u-95% CI`[4], ind_sum$fixed$`l-95% CI`[4]),
-    var = "Fixed_Contrast_LWPD_LW_Block"
+    mean = ind_sum$fixed$Estimate[3],
+    sd = sd_determination(ind_sum$fixed$Estimate[3], ind_sum$fixed$`u-95% CI`[3], ind_sum$fixed$`l-95% CI`[3]),
+    var = "Fixed_Contrast_LWPD_Listwide"
   ) %>%
   add_row(
     mean = ind_sum$random$Subject$Estimate[1],
