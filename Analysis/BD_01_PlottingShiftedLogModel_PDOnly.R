@@ -85,6 +85,8 @@ posterior_cor <- tibble(
   UPDRS = numeric(),
   MC_Stroop = numeric(),
   MI_Stroop = numeric(),
+  CC_cost = numeric(),
+  CI_cost = numeric(),
   ProactiveC = numeric(),
   Item = character(),
   paired = numeric()
@@ -128,6 +130,10 @@ for (part in part_nr) {
   Stroop_MI_PD_LW_Ind <- (LW_MI_I_PD_ind - LW_MI_C_PD_ind)
   LW_Block_PD_Ind <- Stroop_MC_PD_LW_Ind - Stroop_MI_PD_LW_Ind
   
+  # calculate reduction congruency cost
+  CC_cost_Ind <- (LW_MC_C_PD_ind - LW_MI_C_PD_ind)
+  CI_cost_Ind <- (LW_MI_I_PD_ind - LW_MC_I_PD_ind)
+  
   # calculate marginal in the diagnostic items  
   LW_MC_C_PD_Dia <- exp((post_LW_Dia$b_Intercept + eval(parse(text = var_intercept))) +
                           0.5* (post_LW_Dia$b_Contrast_LWPD_Congruency + eval(parse(text = var_Congruency))) +
@@ -156,6 +162,10 @@ for (part in part_nr) {
   Stroop_MI_PD_LW_Dia <- (LW_MI_I_PD_Dia - LW_MI_C_PD_Dia)
   LW_Block_PD_Dia <- Stroop_MC_PD_LW_Dia - Stroop_MI_PD_LW_Dia
   
+  # calculate reduction congruency cost
+  CC_cost_Dia <- (LW_MC_C_PD_Dia - LW_MI_C_PD_Dia)
+  CI_cost_Dia <- (LW_MI_I_PD_Dia - LW_MC_I_PD_Dia)
+  
   #updrs score
   m_score <- pull(data %>% filter(Subject == part) %>%  distinct(UPDRS))
   
@@ -164,6 +174,8 @@ for (part in part_nr) {
                             UPDRS = m_score, 
                             MC_Stroop = mean(Stroop_MC_PD_LW_Ind),
                             MI_Stroop = mean(Stroop_MI_PD_LW_Ind),
+                            CC_cost = mean(CC_cost_Ind),
+                            CI_cost = mean(CI_cost_Ind),
                             ProactiveC = mean(LW_Block_PD_Ind),
                             Item = "Inducer",
                             paired = p_num
@@ -174,6 +186,8 @@ for (part in part_nr) {
                                              UPDRS = m_score, 
                                              MC_Stroop = mean(Stroop_MC_PD_LW_Dia),
                                              MI_Stroop = mean(Stroop_MI_PD_LW_Dia),
+                                             CC_cost = mean(CC_cost_Dia),
+                                             CI_cost = mean(CI_cost_Dia),
                                              ProactiveC = mean(LW_Block_PD_Dia),
                                              Item = "Diagnostic",
                                              paired = p_num
@@ -209,3 +223,7 @@ ggplot(data = posterior_cor, aes(x = fct_inorder(Item), y = ProactiveC, color = 
     plot.title.position  =  "panel"
   ) +
   scale_fill_manual(values = c("#B2182B","#2166AC"))
+
+posterior_cor %>%
+  filter(Item == "Diagnostic") %>%
+  summarize(mean_eff = mean(ProactiveC), mean_CC = mean(CC_cost), mean_CI= mean(CI_cost))
