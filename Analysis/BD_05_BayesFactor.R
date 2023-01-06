@@ -24,14 +24,86 @@ set.seed(32936)
 
 
 
-Bridge_comp <- function(full_model, deficient_model){
-  #calculate marginal logliklihood using bridge sampling
-  margLogLik_full <- bridge_sampler(full_model, silent = TRUE)
-  margLogLik_null <- bridge_sampler(deficient_model, silent = TRUE)
-  # next calculate the BF
-  BF <- bayes_factor(margLogLik_full, margLogLik_null)
-  return(BF$bf)
+# Bridge_comp <- function(full_model, deficient_model){
+#   #calculate marginal logliklihood using bridge sampling
+#   margLogLik_full <- bridge_sampler(full_model, silent = TRUE)
+#   margLogLik_null <- bridge_sampler(deficient_model, silent = TRUE)
+#   # next calculate the BF
+#   BF <- bayes_factor(margLogLik_full, margLogLik_null)
+#   return(BF$bf)
+# }
+
+
+# para <- c("LW_min_CO_Intercept",
+#           "LW_min_CO_Congruency", 
+#           "LW_min_CO_BlocknItem",
+#           "LW_min_CO_2Factor",
+#           "LW_min_PD_Intercept",
+#           "LW_min_PD_Congruency",
+#           "LW_min_PD_BlocknItem",
+#           "LW_min_PD_2Factor")
+# Liklihoods <- tibble(
+#   Model = character(),
+#   Log_lik = numeric()
+# )
+# for(i in c(1:8)){
+#   temp_t <- tibble(Model = para[i],
+#                    Log_lik =i)
+#   Liklihoods <- bind_rows(Liklihoods, temp_t)
+# 
+# }
+
+# because we need to add very small probabilities (exponentiate the log),
+# this is possible with this function. Source:
+# https://stats.stackexchange.com/questions/379335/adding-very-small-probabilities-how-to-compute
+logsum <- function(l1, l2){
+  max(l1,l2) + log1p(exp(-abs(l1-l2)))
 }
+
+a <- exp(-58106) + exp(-50001)
+log(a)
+b <- logsum(-137977,-137571)
+c <- logsum(-137862,-137574)
+exp(c-b)
+exp(-137862 - (-137571))
+
+Bayes_inclusion_factor_matched <- function(Liklihoods, param){
+  # function to calculate bayes inclusion factor across matched models
+  Group_var = substr(param,1,2)
+  if(grepl("IS_Block|LW_Block", param)){
+    mod_with <- Liklihoods %>%
+      filter(Model == "full") %>%
+      pull(Log_lik)
+    mod_without <-  Liklihoods %>%
+      filter(grepl(Group_var, Model)) %>%
+      filter(grepl("2Factor", Model)) %>%
+      pull(Log_lik) 
+    BF <- exp(mod_with - mod_without)
+  } 
+  else{ 
+    if (grepl("Congruency",param)){
+      filter_with <- "2Factor|Congruency"
+      filter_without <- "Intercept|BlocknItem"}
+    else if (grepl("Itemspecific|Listwide", param)){
+      filter_with <- "2Factor|BlocknItem"
+      filter_without <- "Intercept|Congruency"}
+    # get the models with the effect of interest
+    mod_with_vals <- Liklihoods %>% 
+      filter(grepl(Group_var, Model)) %>%
+      filter(grepl(filter_with, Model)) %>%
+      pull(Log_lik)
+    mod_with <- logsum(mod_with_vals[1], mod_with_vals[2])
+    # get the models without the effect of interest
+    mod_without_vals <- Liklihoods %>% 
+      filter(grepl(Group_var, Model)) %>%
+      filter(grepl(filter_without, Model)) %>%
+      pull(Log_lik)
+    mod_without <- logsum(mod_without_vals[1], mod_without_vals[2])
+    BF <- exp(mod_with - mod_without) # we have to log transform again for division
+  }
+  return(BF)
+}
+
 
 load_part_mod <- function(loc, model_t, item_type, effect, parameter){
   string <- loc
@@ -40,7 +112,7 @@ load_part_mod <- function(loc, model_t, item_type, effect, parameter){
   } else if (model_t == "Acc"){
     string <- file.path(string, "fit")
   }
-  string <- paste(string, item_type , effect, "min", parameter,sep = "_")
+  string <- paste(string, item_type , parameter,sep = "_")
   fit <- load(paste(string, ".rda", sep =""))
   fit_model <- eval(parse(text = fit)) # rename the model
   return(fit_model)
@@ -65,6 +137,74 @@ load_full_mod <- function(loc, model_t, item_type, effect){
   return(fit_model)
 }
 
+# BF_calc <- function(fullmod_loc, part_mod_loc){
+#   # tibble to save the data
+#   Model_BF <- tibble(
+#     Model = character(),
+#     Item_type = character(),
+#     Effect = character(),
+#     Group = character(),
+#     Parameter = character(),
+#     BF = numeric(),
+#   )
+#   mods = c("RT", "Acc")
+#   item_type = c("inducer","diagnostic")
+#   effect = c("LW", "IS")
+#   for (model_type in mods){
+#     for (itm in item_type){
+#       for(eff in effect){
+#         if (eff == "LW"){
+#           parameter <- c(
+#             "CO_Congruency",
+#             "CO_Listwide",
+#             "CO_LW_Block",
+#             "PD_Congruency",
+#             "PD_Listwide",
+#             "PD_LW_Block"
+#           )
+#         } else if (eff == "IS"){
+#           parameter <- c(
+#             "CO_Congruency",
+#             "CO_Itemspecific",
+#             "CO_IS_Block",
+#             "PD_Congruency",
+#             "PD_Itemspecific",
+#             "PD_IS_Block"
+#           )
+#         }
+#         # load the full model
+#         full_mod <- load_full_mod(loc = fullmod_loc, 
+#                                   model_t = model_type,
+#                                   item_type = itm, 
+#                                   effect = eff)
+#         for (par in parameter){
+#           # load the partial model
+#           def_mod <- load_part_mod(loc = part_mod_loc, 
+#                                    model_t = model_type, 
+#                                    item_type = itm, 
+#                                    effect = eff, 
+#                                    parameter = par)
+#           # claculate the BF
+#           BF_inc <- Bridge_comp(full_model = full_mod,
+#                                 deficient_model = def_mod)
+#           #save results as a tibble
+#           temp <- tibble(
+#             Model = model_type,
+#             Item_type = itm,
+#             Effect = eff,
+#             Group = substr(par, start = 1, stop = 2),
+#             Parameter = substr(par, start = 4, stop = nchar(par)),
+#             BF = BF_inc,
+#           )
+#           # join tibble as row 
+#           Model_BF <- bind_rows(Model_BF, temp)
+#         }
+#       }
+#     }
+#   }
+#   return(Model_BF)
+# }
+
 BF_calc <- function(fullmod_loc, part_mod_loc){
   # tibble to save the data
   Model_BF <- tibble(
@@ -75,13 +215,31 @@ BF_calc <- function(fullmod_loc, part_mod_loc){
     Parameter = character(),
     BF = numeric(),
   )
-  mods = c("RT", "Acc")
+  
+  #mods = c("RT", "Acc") # Acc models have yet to be fit
+  mods = "RT"
   item_type = c("inducer","diagnostic")
   effect = c("LW", "IS")
   for (model_type in mods){
     for (itm in item_type){
       for(eff in effect){
+        print(paste("Analyzing the", eff, "effect for the", itm, "items of the", model_type, "data"))
+        # tibble to save the liklihood values
+        Liklihoods <- tibble(
+          Model = character(),
+          Log_lik = numeric()
+        )
         if (eff == "LW"){
+          # partial models that we are going to load
+          submodel <- c("LW_min_CO_Intercept",
+                        "LW_min_CO_Congruency", 
+                        "LW_min_CO_BlocknItem",
+                        "LW_min_CO_2Factor",
+                        "LW_min_PD_Intercept",
+                        "LW_min_PD_Congruency",
+                        "LW_min_PD_BlocknItem",
+                        "LW_min_PD_2Factor")
+          # parameters that we need to calculate the BIF for
           parameter <- c(
             "CO_Congruency",
             "CO_Listwide",
@@ -91,6 +249,16 @@ BF_calc <- function(fullmod_loc, part_mod_loc){
             "PD_LW_Block"
           )
         } else if (eff == "IS"){
+          # partial models that we are going to load
+          submodel <- c("IS_min_CO_Intercept",
+                        "IS_min_CO_Congruency", 
+                        "IS_min_CO_BlocknItem",
+                        "IS_min_CO_2Factor",
+                        "IS_min_PD_Intercept",
+                        "IS_min_PD_Congruency",
+                        "IS_min_PD_BlocknItem",
+                        "IS_min_PD_2Factor")
+          # parameters that we need to calculate the BIF for
           parameter <- c(
             "CO_Congruency",
             "CO_Itemspecific",
@@ -105,33 +273,53 @@ BF_calc <- function(fullmod_loc, part_mod_loc){
                                   model_t = model_type,
                                   item_type = itm, 
                                   effect = eff)
-        for (par in parameter){
+        # calculate the log liklihood
+        full_mod_loglik <- bridge_sampler(full_mod, silent = TRUE)
+        temp_t <- tibble(Model = "full",
+                         Log_lik = full_mod_loglik$logml)
+        Liklihoods <- bind_rows(Liklihoods,temp_t)
+        
+        # now we load the partial models
+        for (par in submodel){
           # load the partial model
           def_mod <- load_part_mod(loc = part_mod_loc, 
                                    model_t = model_type, 
                                    item_type = itm, 
                                    effect = eff, 
                                    parameter = par)
-          # claculate the BF
-          BF_inc <- Bridge_comp(full_model = full_mod,
-                                deficient_model = def_mod)
+          # calculate the log liklihood
+          def_mod_loglik <- bridge_sampler(def_mod, silent = TRUE)
+          temp_t <- tibble(Model = par,
+                           Log_lik = def_mod_loglik$logml)
+          Liklihoods <- bind_rows(Liklihoods,temp_t)
+        }
+        # now use the logliklihoods to calculate the bayes inclusion factor
+        for (params in parameter){
+          print(params)
+          BF <- Bayes_inclusion_factor_matched(Liklihoods = Liklihoods, 
+                                         param = params)
           #save results as a tibble
           temp <- tibble(
             Model = model_type,
             Item_type = itm,
             Effect = eff,
-            Group = substr(par, start = 1, stop = 2),
-            Parameter = substr(par, start = 4, stop = nchar(par)),
-            BF = BF_inc,
+            Group = substr(params, start = 1, stop = 2),
+            Parameter = substr(params, start = 4, stop = nchar(params)),
+            BF = BF,
           )
           # join tibble as row 
-          Model_BF <- bind_rows(Model_BF, temp)
+          Model_BF <- Model_BF %>%
+            bind_rows(temp)
         }
+        
       }
     }
   }
   return(Model_BF)
 }
+
+
+
 
 # calculate effect estimates in ms
 conditional_effect_calc_shift <- function(effect, model){
@@ -157,7 +345,11 @@ conditional_effect_calc_shift <- function(effect, model){
       Stroop_MC_CO = MC_I_CO - MC_C_CO,
       Stroop_MI_CO = MI_I_CO - MI_C_CO,
       Control_PD = Stroop_MC_PD - Stroop_MI_PD,
-      Control_CO = Stroop_MC_CO - Stroop_MI_CO)
+      Control_CO = Stroop_MC_CO - Stroop_MI_CO,
+      CC_CO = MC_C_CO - MI_C_CO,
+      CC_PD = MC_C_PD - MI_C_PD,
+      CI_CO = MI_I_CO - MC_I_CO,
+      CI_PD = MI_I_PD - MC_I_PD)
   } else if (effect == "IS"){
     MC_C_PD <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISPD_Congruency + 0.5 * m_post$b_Contrast_ISPD_Itemspecific  + 0.25*m_post$b_Contrast_ISPD_IS_Block) + m_post$sigma/2)
     MC_I_PD <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISPD_Congruency + 0.5 * m_post$b_Contrast_ISPD_Itemspecific  - 0.25*m_post$b_Contrast_ISPD_IS_Block) + m_post$sigma/2)
@@ -177,7 +369,11 @@ conditional_effect_calc_shift <- function(effect, model){
       Stroop_MC_CO = MC_I_CO - MC_C_CO,
       Stroop_MI_CO = MI_I_CO - MI_C_CO,
       Control_PD = Stroop_MC_PD - Stroop_MI_PD,
-      Control_CO = Stroop_MC_CO - Stroop_MI_CO)
+      Control_CO = Stroop_MC_CO - Stroop_MI_CO,
+      CC_CO = MC_C_CO - MI_C_CO,
+      CC_PD = MC_C_PD - MI_C_PD,
+      CI_CO = MI_I_CO - MC_I_CO,
+      CI_PD = MI_I_PD - MC_I_PD)
   }
   return(model_effects)
 }
@@ -205,7 +401,11 @@ conditional_effect_calc_acc <- function(effect, model){
       Stroop_MC_CO = MC_I_CO - MC_C_CO,
       Stroop_MI_CO = MI_I_CO - MI_C_CO,
       Control_PD = Stroop_MC_PD - Stroop_MI_PD,
-      Control_CO = Stroop_MC_CO - Stroop_MI_CO)
+      Control_CO = Stroop_MC_CO - Stroop_MI_CO,
+      CC_CO = MC_C_CO - MI_C_CO,
+      CC_PD = MC_C_PD - MI_C_PD,
+      CI_CO = MI_I_CO - MC_I_CO,
+      CI_PD = MI_I_PD - MC_I_PD)
   } else if (effect == "IS"){
     MC_C_PD <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISPD_Congruency + 0.5 * m_post$b_Contrast_ISPD_Itemspecific  + 0.25*m_post$b_Contrast_ISPD_IS_Block))*100
     MC_I_PD <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISPD_Congruency + 0.5 * m_post$b_Contrast_ISPD_Itemspecific  - 0.25*m_post$b_Contrast_ISPD_IS_Block))*100
@@ -225,7 +425,11 @@ conditional_effect_calc_acc <- function(effect, model){
       Stroop_MC_CO = MC_I_CO - MC_C_CO,
       Stroop_MI_CO = MI_I_CO - MI_C_CO,
       Control_PD = Stroop_MC_PD - Stroop_MI_PD,
-      Control_CO = Stroop_MC_CO - Stroop_MI_CO)
+      Control_CO = Stroop_MC_CO - Stroop_MI_CO,
+      CC_CO = MC_C_CO - MI_C_CO,
+      CC_PD = MC_C_PD - MI_C_PD,
+      CI_CO = MI_I_CO - MC_I_CO,
+      CI_PD = MI_I_PD - MC_I_PD)
   }
   return(model_effects)
 }
@@ -253,17 +457,12 @@ post_sum_calc <- function(summary_table){
   return(model_summary)
 }
 
-mean_par <- function(model, parameter, effect) # keep that for later not in this table 
-  #get mean pars from model by first getting the summary statistics
-  modsum <- summary(model)
-  modsum$fixed["Intercept","Estimate"]
-  
 ### First we get all the variables we need to call our readily calculated models
-
 
 # contrast names seperately
 
 Partial_models_saveloc <- "E:/AdaptiveControl/Data/BehaviorResults"
+#Full_models_saveloc <- "E:/AdaptiveControl/Data/BehaviorResults"
 Full_models_saveloc <- "C:/Users/doex9445/Dateien/Julius/AdaptiveControl/Data"
 
 # calculate BFs
@@ -284,7 +483,7 @@ Full_Model_Info <- BF_Results %>%
 
 # Load and save the data
 
-mods = c("RT", "Acc")
+mods = c("RT")
 item_type = c("inducer","diagnostic")
 effect = c("LW", "IS")
 
@@ -313,22 +512,46 @@ for (md in mods) {
       temp_t <- sum_t %>% filter(!grepl("Stroop", parameter)) # filter the stroop effects which we are not interested in to show
       for (vars in temp_t$parameter){
         group_in <- substr(vars, start = nchar(vars)-1, stop = nchar(vars))
-        if (grepl("Congruency" ,vars)){
-          par = "Congruency"
-        } 
-        if (grepl("Block" ,vars)){
-            par = "Listwide" 
-        } 
-        if (grepl("Control" ,vars)) {
-            par = "LW_Block"
-        }
+        
         #NOTE: by accident when i created the models for the BF calculation, also the models
         # get a single row
         row_var <- sum_t %>% filter(parameter == vars)
-        # Write values
-        Full_Model_Info$mean[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$mean
-        Full_Model_Info$lower95[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$lower95
-        Full_Model_Info$upper95[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$upper95
+        if (grepl("Congruency" ,vars)){
+          par = "Congruency"
+          # Write values
+          Full_Model_Info$mean[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$mean
+          Full_Model_Info$lower95[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$lower95
+          Full_Model_Info$upper95[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$upper95
+        } 
+        if (grepl("Block" ,vars)){
+            par = "Listwide" 
+            # Write values
+            Full_Model_Info$mean[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$mean
+            Full_Model_Info$lower95[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$lower95
+            Full_Model_Info$upper95[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$upper95
+        } 
+        if (grepl("Control" ,vars)) {
+            par = "LW_Block"
+            # Write values
+            Full_Model_Info$mean[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$mean
+            Full_Model_Info$lower95[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$lower95
+            Full_Model_Info$upper95[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$upper95
+        }
+        if (grepl("CI" ,vars) | grepl("CC" ,vars) ){
+          var_n <- substr(vars, start = 1, stop = 2)
+          temp <- tibble(Model = md,
+                 Item_type = itm,
+                 Effect = eff,
+                 Group = group_in,
+                 Parameter = var_n,
+                 BF = NA,
+                 mean = row_var$mean,
+                 lower95 = row_var$lower95,
+                 upper95 = row_var$upper95)
+          Full_Model_Info <- bind_rows(Full_Model_Info, temp)
+
+        }
+
       }
     }
   }
@@ -339,11 +562,11 @@ for (md in mods) {
 # for the item specific effect as the list wise effect. So the itemspecific model actually is named listwise (variable names are correct though)
 # same goes for the interaction. Thus in the above code only LW_Block and Listwise are used. Does not affect the results though.
 #For better readability I correct that below
-Full_Model_Info_fin <- Full_Model_Info %>%
-  mutate(Parameter = case_when(
-    Effect == "IS" & Parameter == "Listwide" ~ "Itemspecific",
-    Effect == "IS" & Parameter == "LW_Block" ~ "IS_Block",
-    TRUE ~ Parameter))
+Full_Model_Info_fin <- Full_Model_Info #%>%
+  #mutate(Parameter = case_when(
+    #Effect == "IS" & Parameter == "Listwide" ~ "Itemspecific",
+    #Effect == "IS" & Parameter == "LW_Block" ~ "IS_Block",
+    #TRUE ~ Parameter))
 
 # Export as latex table
 print(xtable(Full_Model_Info_fin, type = "latex"), file = "C:/Users/doex9445/Dateien/Julius/AdaptiveControl/Data/Bheav_Summary.tex")
@@ -370,3 +593,7 @@ fit_inducer_model_LW_Diagnostics
 load("E:/AdaptiveControl/Data/BehaviorResults/fit_diagnostic_LW_min_CO_LW_Block.rda")
 
 val <- Bridge_comp(fit_inducer_model_LW_Diagnostics, fit_model)
+
+a <- Full_Model_Info_fin %>%
+  filter(Model != "Acc"),
+         Parameter == "CC" | Parameter == "CI")
