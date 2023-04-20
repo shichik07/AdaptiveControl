@@ -1,4 +1,5 @@
-Time Frequency Analysis of the EEG data
+Time Frequency Analysis of the EEG data. Transparency note: the scripts include an additional exploratory analysis of the time frequency analysis where we analyzed the non-phase locked theta activity by subtracting the TF spectrum of the ERP[1]. Results between the simpler frequency analysis reported TF analysis and the non-phase locked analysis produced similar results (same results for the healthy control participants, the PD stimulus-locked proactive control data did not cross the threshold of significance but the response-locked data did). Since both analyses yield the same qualitative insights we report the analysis that made fewer theoretical assumptions on the data. 
+
 
 TF_00_1_Preprocessing_Correction.m - Preprocessing script up until ICA correction 
 
@@ -23,3 +24,5 @@ TF_Ana_04_LimoGLM.m - Linear model analysis of the stimulus locked data using fu
 TF_Ana_04b_LimoGLM_ResponseL.m - Linear model analysis of the response locked data using functions from the LIMO toolbox
 
 TF_Ana_05_FT_ClusterPermJoined.m - Cluster Permutation statistics of for both response locked and stimulus locked data to test proactive and reactive control effects in the theta band
+
+[1] Cohen, Michael X., and Tobias H. Donner. "Midfrontal conflict-related theta-band power reflects neural oscillations that predict behavior." Journal of neurophysiology 110.12 (2013): 2752-2763.
