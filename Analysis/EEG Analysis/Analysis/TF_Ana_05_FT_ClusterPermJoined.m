@@ -16,14 +16,14 @@ ft                           = 'C:\Program Files\MATLAB\Fieldtrip';
 LIMO                         = 'C:\Program Files\MATLAB\LIMO';
 cm                           = 'C:\Program Files\MATLAB\FileExchangeAddOns'; % colormaps
 % set directories
-dirs.functions               = 'C:\Users\doex9445\Dateien\Julius\AdaptiveControl\AdaptiveControl\Analysis';
+dirs.functions               = 'C:\Users\doex9445\Dateien\Julius\AdaptiveControl\AdaptiveControl\Analysis\EEG Analysis\Custom functions';
 
 % set new home directory for baseline correction
-dirs.home                    = 'H:\KricheldorffJ\AdaptiveControl\Data\FrequencyData';
+dirs.home                    = 'E:\AdaptiveControl\Data\FrequencyData';
 dirs.eegsave                 = 'H:\KricheldorffJ\AdaptiveControl\Data\FrequencyData';
 
 % Participant IDs we want to analyze
-Participant_IDs              = dir(dirs.home);
+Participant_IDs              = dir(dirs.eegsave);
 Participant_IDs              = Participant_IDs([Participant_IDs(:).isdir]); % remove all files (isdir property is 0)
 Participant_IDs              = Participant_IDs(~ismember({Participant_IDs(:).name},{'.','..'}));% remove '.' and '..'
 Participant_IDs              = Participant_IDs(~contains({Participant_IDs(:).name},{'derivatives'}));
@@ -41,14 +41,14 @@ addpath(dirs.functions)
 
 
 %% Load example data file for some useful information
-examp                       = fullfile(dirs.home, Participant_IDs{4}, strcat(Participant_IDs{4} ,"_ISPC_MC_I_frequency_data_pl_RL_bslC_RL.mat"));
+examp                       = fullfile(dirs.eegsave, Participant_IDs{4}, strcat(Participant_IDs{4} ,"_ISPC_MC_I_frequency_data_pl_RL_bslC_RL.mat"));
 data                        = load(examp);
 InfosRL.chanlocs                    = data.TF_phase.chanlocs;
 InfosRL.freqs_base                  = data.TF_phase.Frequencies;
 InfosRL.time                        = data.TF_phase.Time;
 scale = 0.6; % scale for the single plots in dB
 
-examp                       = fullfile(dirs.home, Participant_IDs{4}, strcat(Participant_IDs{4} ,"_ISPC_MC_I_frequency_data_pl_bslC"));
+examp                       = fullfile(dirs.home, Participant_IDs{4}, strcat(Participant_IDs{4} ,"_ISPC_MC_I_frequency_data_pl_bslC.mat"));
 data                        = load(examp);
 InfosSL.chanlocs                    = data.TF_phase.chanlocs;
 InfosSL.freqs_base                       = data.TF_phase.Frequencies;
@@ -63,7 +63,7 @@ ISPC_missing = ["sub-CO_6", "sub-PD_15", "sub-PD_21"];
 
 % get layout
 cfg           = [];
-cfg.layout =  'C:\Users\doex9445\Dateien\Julius\AdaptiveControl\AdaptiveControl\Analysis\EasyCap128.mat';
+cfg.layout =  'C:\Users\doex9445\Dateien\Julius\AdaptiveControl\AdaptiveControl\Analysis\EEG Analysis\Custom functions\EasyCap128.mat';
 cfg.feedback  = 'yes';
 [EasyCap128, cfg] = ft_prepare_layout(cfg)
 
@@ -88,6 +88,9 @@ for eff = 1:2
         
         if lc == 1
             load_loc = fullfile(dirs.home, Participant_IDs{2}, 'LIMO_Output', strcat(Participant_IDs{2}, ['_GLM_',eff_name ,'_', phase_type,'.mat']));
+            load_loc = fullfile(dirs.home, Participant_IDs{2}, strcat(Participant_IDs{2}, ['_GLM_',eff_name ,'_', phase_type,'.mat']));
+            
+
             load(load_loc, 'Betas');
             Infos = InfosSL;
             Order = [1, 2];

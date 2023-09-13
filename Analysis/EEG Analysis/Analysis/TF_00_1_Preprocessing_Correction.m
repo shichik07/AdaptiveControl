@@ -12,7 +12,7 @@ dbstop if error
 
 
 % set directories
-dirs.home                    = 'G:\Julia Ficke\AdaptiveControl\BIDS Format'; %hier habe ich das Gruppenlaufwerk gespeichert - du müsstest hier deinen Speicherort für die Daten eintragen
+dirs.home                    = 'G:\Julia Ficke\AdaptiveControl\BIDS Format\BIDS'; %hier habe ich das Gruppenlaufwerk gespeichert - du müsstest hier deinen Speicherort für die Daten eintragen
 dirs.eegsave                 = 'H:\KricheldorffJ\AdaptiveControl\PreprocessedNew\FrequencyData'; % hier Ordner zum Speichern der Ergebenisse - im Gruppenlaufwerk unter PipelineValidate zu finden
 dirs.functions               = 'C:\Users\doex9445\Dateien\Julius\AdaptiveControl\AdaptiveControl\Analysis';
 
@@ -25,10 +25,10 @@ Participant_IDs              = {Participant_IDs(:).name};
 Part_N                       = length(Participant_IDs); %number of participants
 
 cd('G:\Julia Ficke\AdaptiveControl\CleanData_EEG')
-eegl                         = 'C:\Program Files\MATLAB\EEGSoftware';
+eegl                         = ' C:\Program Files\MATLAB\EEGSoftware\eeglab2022.0';
 % set directories
-dirs.home                    = 'G:\Julia Ficke\AdaptiveControl\BIDS Format'; %hier habe ich das Gruppenlaufwerk gespeichert - du müsstest hier deinen Speicherort für die Daten eintragen
-dirs.eegsave                 = 'G:\Julia Ficke\AdaptiveControl\CleanData_EEG'; % hier Ordner zum Speichern der Ergebenisse - im Gruppenlaufwerk unter PipelineValidate zu finden
+%dirs.home                    = 'G:\Julia Ficke\AdaptiveControl\BIDS Format'; %hier habe ich das Gruppenlaufwerk gespeichert - du müsstest hier deinen Speicherort für die Daten eintragen
+%dirs.eegsave                 = 'G:\Julia Ficke\AdaptiveControl\CleanData_EEG'; % hier Ordner zum Speichern der Ergebenisse - im Gruppenlaufwerk unter PipelineValidate zu finden
 
 
 % Trigger Namen
@@ -43,6 +43,8 @@ for sub = 1:Part_N
     ALLCOM = []; ALLEEG = []; EEG = []; STUDY = [];
     
     %construct folder name to load the dataset
+    
+    folderID ='G:\Julia Ficke\AdaptiveControl\BIDS Format\BIDS\sub-CO_10\eeg'
     folderID = fullfile(dirs.home,'BIDS',Participant_IDs{sub}, 'eeg');
     fileID = dir(fullfile(folderID, '*.vhdr')); %find header name
     
@@ -220,8 +222,6 @@ for sub = 1:Part_N
     %add channel FCz
     EEG = pop_chanedit(EEG, 'insert',64,'changefield',{64,'labels','FCz'},'changefield',{64,'theta','0'},'changefield',{64,'radius','0.127777777777778'},'changefield',{64,'X','0.390731128489274'},'changefield',{64,'Y','0'},'changefield',{64,'Z','0.920504853452440'},'changefield',{64,'sph_theta','0'},'changefield',{64,'sph_phi','67'},'changefield',{64,'sph_radius','1'},'changefield',{64,'type','EEG'},'setref',{'1:128','FCz'});
     
-    
-    
     %Save Data
     pdest1 = fullfile(dirs.eegsave, Participant_IDs{sub}, 'eeg')
     mkdir (pdest1)
@@ -277,7 +277,7 @@ for sub = 1:Part_N
     
     %rereference data with average
     EEG = pop_reref( EEG, [],'refloc',struct('labels',{'FCz'},'sph_radius',{1},'sph_theta',{0},'sph_phi',{67},'theta',{0},'radius',{0.12778},'X',{0.39073},'Y',{0},'Z',{0.9205},'type',{'EEG'},'ref',{'FCz'},'urchan',{[]},'datachan',{0}));
-    
+   
     % Remove line noise with cleanline
     EEG = pop_cleanline(EEG, 'bandwidth',2,'chanlist',[1:EEG.nbchan] ,'computepower',1,'linefreqs',50,'newversion',0,'normSpectrum',0,'p',0.01,'pad',2,'plotfigures',0,'scanforlines',0,'sigtype','Channels','taperbandwidth',2,'tau',100,'verb',1,'winsize',2.5,'winstep',1);
     

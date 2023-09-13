@@ -19,11 +19,11 @@ cm                           = 'C:\Program Files\MATLAB\FileExchangeAddOns'; % c
 dirs.functions               = 'C:\Users\doex9445\Dateien\Julius\AdaptiveControl\AdaptiveControl\Analysis';
 
 % set new home directory for baseline correction
-dirs.home                    = 'H:\KricheldorffJ\AdaptiveControl\Data\FrequencyData';
+dirs.home                    = 'E:\AdaptiveControl\Data\FrequencyData';
 dirs.eegsave                 = 'H:\KricheldorffJ\AdaptiveControl\Data\FrequencyData';
 
 % Participant IDs we want to analyze
-Participant_IDs              = dir(dirs.home);
+Participant_IDs              = dir(dirs.eegsave);
 Participant_IDs              = Participant_IDs([Participant_IDs(:).isdir]); % remove all files (isdir property is 0)
 Participant_IDs              = Participant_IDs(~ismember({Participant_IDs(:).name},{'.','..'}));% remove '.' and '..'
 Participant_IDs              = Participant_IDs(~contains({Participant_IDs(:).name},{'derivatives'}));
@@ -39,7 +39,7 @@ addpath(dirs.functions)
 
 
 %% Load example data file for some useful information
-examp                       = fullfile(dirs.home, Participant_IDs{4}, strcat(Participant_IDs{4} ,"_ISPC_MC_I_frequency_data_pl_bslC"));
+examp                       = fullfile(dirs.home, Participant_IDs{4}, strcat(Participant_IDs{4} ,"_ISPC_MC_I_frequency_data_pl_bslC.mat"));
 data                        = load(examp);
 Infos.chanlocs                    = data.TF_phase.chanlocs;
 channel_l = {Infos.chanlocs(:).labels};
@@ -48,6 +48,7 @@ freqs = Infos.freqs_base        ;
 Infos.time                        = data.TF_phase.Time;
 Time_SL = Infos.time;
 cont_n = 15; % number of contours for contourblock
+
 
 %% load RL Time
 examp                       = fullfile(dirs.eegsave, Participant_IDs{4}, strcat(Participant_IDs{4} ,"_ISPC_MC_I_frequency_data_pl_RL_bslC_RL.mat"));

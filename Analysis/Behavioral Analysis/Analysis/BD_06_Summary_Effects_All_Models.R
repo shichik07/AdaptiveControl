@@ -23,6 +23,7 @@ library(xtable)
 set.seed(32936)
 
 
+
 load_part_mod <- function(loc, model_t, item_type, effect, parameter){
   string <- loc
   if (model_t == "RT"){
@@ -129,14 +130,14 @@ conditional_effect_calc_shift <- function(effect, model){
   m_post <- posterior_samples(model)
   # calculate conditional effects depending on model
   if (effect == "LW"){
-    MC_C_PD <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWPD_Congruency + 0.5 * m_post$b_Contrast_LWPD_Listwide  + 0.25*m_post$b_Contrast_LWPD_LW_Block) + m_post$sigma/2)
-    MC_I_PD <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWPD_Congruency + 0.5 * m_post$b_Contrast_LWPD_Listwide  - 0.25*m_post$b_Contrast_LWPD_LW_Block) + m_post$sigma/2)
-    MI_C_PD <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWPD_Congruency - 0.5 * m_post$b_Contrast_LWPD_Listwide  - 0.25*m_post$b_Contrast_LWPD_LW_Block) + m_post$sigma/2)
-    MI_I_PD <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWPD_Congruency - 0.5 * m_post$b_Contrast_LWPD_Listwide  + 0.25*m_post$b_Contrast_LWPD_LW_Block) + m_post$sigma/2)
-    MC_C_CO <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWCO_Congruency + 0.5 * m_post$b_Contrast_LWCO_Listwide  + 0.25*m_post$b_Contrast_LWCO_LW_Block) + m_post$sigma/2)
-    MC_I_CO <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWCO_Congruency + 0.5 * m_post$b_Contrast_LWCO_Listwide  - 0.25*m_post$b_Contrast_LWCO_LW_Block) + m_post$sigma/2)
-    MI_C_CO <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWCO_Congruency - 0.5 * m_post$b_Contrast_LWCO_Listwide  - 0.25*m_post$b_Contrast_LWCO_LW_Block) + m_post$sigma/2)
-    MI_I_CO <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWCO_Congruency - 0.5 * m_post$b_Contrast_LWCO_Listwide  + 0.25*m_post$b_Contrast_LWCO_LW_Block) + m_post$sigma/2)
+    MC_C_PD <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWPD_Congruency + 0.5 * m_post$b_Contrast_LWPD_Listwide  + 0.5*m_post$b_Contrast_LWPD_LW_Block) + m_post$sigma/2)
+    MC_I_PD <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWPD_Congruency + 0.5 * m_post$b_Contrast_LWPD_Listwide  - 0.5*m_post$b_Contrast_LWPD_LW_Block) + m_post$sigma/2)
+    MI_C_PD <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWPD_Congruency - 0.5 * m_post$b_Contrast_LWPD_Listwide  - 0.5*m_post$b_Contrast_LWPD_LW_Block) + m_post$sigma/2)
+    MI_I_PD <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWPD_Congruency - 0.5 * m_post$b_Contrast_LWPD_Listwide  + 0.5*m_post$b_Contrast_LWPD_LW_Block) + m_post$sigma/2)
+    MC_C_CO <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWCO_Congruency + 0.5 * m_post$b_Contrast_LWCO_Listwide  + 0.5*m_post$b_Contrast_LWCO_LW_Block) + m_post$sigma/2)
+    MC_I_CO <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWCO_Congruency + 0.5 * m_post$b_Contrast_LWCO_Listwide  - 0.5*m_post$b_Contrast_LWCO_LW_Block) + m_post$sigma/2)
+    MI_C_CO <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWCO_Congruency - 0.5 * m_post$b_Contrast_LWCO_Listwide  - 0.5*m_post$b_Contrast_LWCO_LW_Block) + m_post$sigma/2)
+    MI_I_CO <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWCO_Congruency - 0.5 * m_post$b_Contrast_LWCO_Listwide  + 0.5*m_post$b_Contrast_LWCO_LW_Block) + m_post$sigma/2)
     model_effects <- tibble(
       MC_C_PD = MC_C_PD,
       MC_I_PD = MC_I_PD,
@@ -155,16 +156,19 @@ conditional_effect_calc_shift <- function(effect, model){
       Stroop_MC_CO = MC_I_CO - MC_C_CO,
       Stroop_MI_CO = MI_I_CO - MI_C_CO,
       Control_PD = Stroop_MC_PD - Stroop_MI_PD,
-      Control_CO = Stroop_MC_CO - Stroop_MI_CO)
+      Control_CO = Stroop_MC_CO - Stroop_MI_CO,
+      Control_Dif_CO = Control_CO - Control_PD,
+      Conflict_improv_PD = MI_I_PD - MC_I_PD,
+      Conflict_improv_CO = MI_I_CO - MC_I_CO)
   } else if (effect == "IS"){
-    MC_C_PD <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISPD_Congruency + 0.5 * m_post$b_Contrast_ISPD_Itemspecific  + 0.25*m_post$b_Contrast_ISPD_IS_Block) + m_post$sigma/2)
-    MC_I_PD <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISPD_Congruency + 0.5 * m_post$b_Contrast_ISPD_Itemspecific  - 0.25*m_post$b_Contrast_ISPD_IS_Block) + m_post$sigma/2)
-    MI_C_PD <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISPD_Congruency - 0.5 * m_post$b_Contrast_ISPD_Itemspecific  - 0.25*m_post$b_Contrast_ISPD_IS_Block) + m_post$sigma/2)
-    MI_I_PD <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISPD_Congruency - 0.5 * m_post$b_Contrast_ISPD_Itemspecific  + 0.25*m_post$b_Contrast_ISPD_IS_Block) + m_post$sigma/2)
-    MC_C_CO <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISCO_Congruency + 0.5 * m_post$b_Contrast_ISCO_Itemspecific  + 0.25*m_post$b_Contrast_ISCO_IS_Block) + m_post$sigma/2)
-    MC_I_CO <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISCO_Congruency + 0.5 * m_post$b_Contrast_ISCO_Itemspecific  - 0.25*m_post$b_Contrast_ISCO_IS_Block) + m_post$sigma/2)
-    MI_C_CO <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISCO_Congruency - 0.5 * m_post$b_Contrast_ISCO_Itemspecific  - 0.25*m_post$b_Contrast_ISCO_IS_Block) + m_post$sigma/2)
-    MI_I_CO <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISCO_Congruency - 0.5 * m_post$b_Contrast_ISCO_Itemspecific  + 0.25*m_post$b_Contrast_ISCO_IS_Block) + m_post$sigma/2)
+    MC_C_PD <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISPD_Congruency + 0.5 * m_post$b_Contrast_ISPD_Itemspecific  + 0.5*m_post$b_Contrast_ISPD_IS_Block) + m_post$sigma/2)
+    MC_I_PD <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISPD_Congruency + 0.5 * m_post$b_Contrast_ISPD_Itemspecific  - 0.5*m_post$b_Contrast_ISPD_IS_Block) + m_post$sigma/2)
+    MI_C_PD <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISPD_Congruency - 0.5 * m_post$b_Contrast_ISPD_Itemspecific  - 0.5*m_post$b_Contrast_ISPD_IS_Block) + m_post$sigma/2)
+    MI_I_PD <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISPD_Congruency - 0.5 * m_post$b_Contrast_ISPD_Itemspecific  + 0.5*m_post$b_Contrast_ISPD_IS_Block) + m_post$sigma/2)
+    MC_C_CO <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISCO_Congruency + 0.5 * m_post$b_Contrast_ISCO_Itemspecific  + 0.5*m_post$b_Contrast_ISCO_IS_Block) + m_post$sigma/2)
+    MC_I_CO <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISCO_Congruency + 0.5 * m_post$b_Contrast_ISCO_Itemspecific  - 0.5*m_post$b_Contrast_ISCO_IS_Block) + m_post$sigma/2)
+    MI_C_CO <- exp((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISCO_Congruency - 0.5 * m_post$b_Contrast_ISCO_Itemspecific  - 0.5*m_post$b_Contrast_ISCO_IS_Block) + m_post$sigma/2)
+    MI_I_CO <- exp((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISCO_Congruency - 0.5 * m_post$b_Contrast_ISCO_Itemspecific  + 0.5*m_post$b_Contrast_ISCO_IS_Block) + m_post$sigma/2)
     model_effects <- tibble(
       MC_C_PD = MC_C_PD,
       MC_I_PD = MC_I_PD,
@@ -183,7 +187,10 @@ conditional_effect_calc_shift <- function(effect, model){
       Stroop_MC_CO = MC_I_CO - MC_C_CO,
       Stroop_MI_CO = MI_I_CO - MI_C_CO,
       Control_PD = Stroop_MC_PD - Stroop_MI_PD,
-      Control_CO = Stroop_MC_CO - Stroop_MI_CO)
+      Control_CO = Stroop_MC_CO - Stroop_MI_CO,
+      Control_Dif_CO = Control_CO - Control_PD,
+      Conflict_improv_PD = MI_I_PD - MC_I_PD,
+      Conflict_improv_CO = MI_I_CO - MC_I_CO)
   }
   return(model_effects)
 }
@@ -193,14 +200,14 @@ conditional_effect_calc_acc <- function(effect, model){
   m_post <- posterior_samples(model)
   # calculate conditional effects depending on model
   if (effect == "LW"){
-    MC_C_PD <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWPD_Congruency + 0.5 * m_post$b_Contrast_LWPD_Listwide  + 0.25*m_post$b_Contrast_LWPD_LW_Block))*100
-    MC_I_PD <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWPD_Congruency + 0.5 * m_post$b_Contrast_LWPD_Listwide  - 0.25*m_post$b_Contrast_LWPD_LW_Block))*100
-    MI_C_PD <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWPD_Congruency - 0.5 * m_post$b_Contrast_LWPD_Listwide  - 0.25*m_post$b_Contrast_LWPD_LW_Block))*100
-    MI_I_PD <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWPD_Congruency - 0.5 * m_post$b_Contrast_LWPD_Listwide  + 0.25*m_post$b_Contrast_LWPD_LW_Block))*100
-    MC_C_CO <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWCO_Congruency + 0.5 * m_post$b_Contrast_LWCO_Listwide  + 0.25*m_post$b_Contrast_LWCO_LW_Block))*100
-    MC_I_CO <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWCO_Congruency + 0.5 * m_post$b_Contrast_LWCO_Listwide  - 0.25*m_post$b_Contrast_LWCO_LW_Block))*100
-    MI_C_CO <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWCO_Congruency - 0.5 * m_post$b_Contrast_LWCO_Listwide  - 0.25*m_post$b_Contrast_LWCO_LW_Block))*100
-    MI_I_CO <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWCO_Congruency - 0.5 * m_post$b_Contrast_LWCO_Listwide  + 0.25*m_post$b_Contrast_LWCO_LW_Block))*100
+    MC_C_PD <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWPD_Congruency + 0.5 * m_post$b_Contrast_LWPD_Listwide  + 0.5*m_post$b_Contrast_LWPD_LW_Block))*100
+    MC_I_PD <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWPD_Congruency + 0.5 * m_post$b_Contrast_LWPD_Listwide  - 0.5*m_post$b_Contrast_LWPD_LW_Block))*100
+    MI_C_PD <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWPD_Congruency - 0.5 * m_post$b_Contrast_LWPD_Listwide  - 0.5*m_post$b_Contrast_LWPD_LW_Block))*100
+    MI_I_PD <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWPD_Congruency - 0.5 * m_post$b_Contrast_LWPD_Listwide  + 0.5*m_post$b_Contrast_LWPD_LW_Block))*100
+    MC_C_CO <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWCO_Congruency + 0.5 * m_post$b_Contrast_LWCO_Listwide  + 0.5*m_post$b_Contrast_LWCO_LW_Block))*100
+    MC_I_CO <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWCO_Congruency + 0.5 * m_post$b_Contrast_LWCO_Listwide  - 0.5*m_post$b_Contrast_LWCO_LW_Block))*100
+    MI_C_CO <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_LWCO_Congruency - 0.5 * m_post$b_Contrast_LWCO_Listwide  - 0.5*m_post$b_Contrast_LWCO_LW_Block))*100
+    MI_I_CO <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_LWCO_Congruency - 0.5 * m_post$b_Contrast_LWCO_Listwide  + 0.5*m_post$b_Contrast_LWCO_LW_Block))*100
     model_effects <- tibble(
       Congruency_PD = (MC_I_PD + MI_I_PD)/2 - (MC_C_PD + MI_C_PD)/2,
       Congruency_CO = (MC_I_CO + MI_I_CO)/2 - (MC_C_CO + MI_C_CO)/2,
@@ -211,16 +218,19 @@ conditional_effect_calc_acc <- function(effect, model){
       Stroop_MC_CO = MC_I_CO - MC_C_CO,
       Stroop_MI_CO = MI_I_CO - MI_C_CO,
       Control_PD = Stroop_MC_PD - Stroop_MI_PD,
-      Control_CO = Stroop_MC_CO - Stroop_MI_CO)
+      Control_CO = Stroop_MC_CO - Stroop_MI_CO,
+      Control_Dif_CO = Control_CO - Control_PD,
+      Conflict_improv_PD = MI_I_PD - MC_I_PD,
+      Conflict_improv_CO = MI_I_CO - MC_I_CO)
   } else if (effect == "IS"){
-    MC_C_PD <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISPD_Congruency + 0.5 * m_post$b_Contrast_ISPD_Itemspecific  + 0.25*m_post$b_Contrast_ISPD_IS_Block))*100
-    MC_I_PD <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISPD_Congruency + 0.5 * m_post$b_Contrast_ISPD_Itemspecific  - 0.25*m_post$b_Contrast_ISPD_IS_Block))*100
-    MI_C_PD <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISPD_Congruency - 0.5 * m_post$b_Contrast_ISPD_Itemspecific  - 0.25*m_post$b_Contrast_ISPD_IS_Block))*100
-    MI_I_PD <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISPD_Congruency - 0.5 * m_post$b_Contrast_ISPD_Itemspecific  + 0.25*m_post$b_Contrast_ISPD_IS_Block))*100
-    MC_C_CO <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISCO_Congruency + 0.5 * m_post$b_Contrast_ISCO_Itemspecific  + 0.25*m_post$b_Contrast_ISCO_IS_Block))*100
-    MC_I_CO <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISCO_Congruency + 0.5 * m_post$b_Contrast_ISCO_Itemspecific  - 0.25*m_post$b_Contrast_ISCO_IS_Block))*100
-    MI_C_CO <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISCO_Congruency - 0.5 * m_post$b_Contrast_ISCO_Itemspecific  - 0.25*m_post$b_Contrast_ISCO_IS_Block))*100
-    MI_I_CO <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISCO_Congruency - 0.5 * m_post$b_Contrast_ISCO_Itemspecific  + 0.25*m_post$b_Contrast_ISCO_IS_Block))*100
+    MC_C_PD <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISPD_Congruency + 0.5 * m_post$b_Contrast_ISPD_Itemspecific  + 0.5*m_post$b_Contrast_ISPD_IS_Block))*100
+    MC_I_PD <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISPD_Congruency + 0.5 * m_post$b_Contrast_ISPD_Itemspecific  - 0.5*m_post$b_Contrast_ISPD_IS_Block))*100
+    MI_C_PD <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISPD_Congruency - 0.5 * m_post$b_Contrast_ISPD_Itemspecific  - 0.5*m_post$b_Contrast_ISPD_IS_Block))*100
+    MI_I_PD <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISPD_Congruency - 0.5 * m_post$b_Contrast_ISPD_Itemspecific  + 0.5*m_post$b_Contrast_ISPD_IS_Block))*100
+    MC_C_CO <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISCO_Congruency + 0.5 * m_post$b_Contrast_ISCO_Itemspecific  + 0.5*m_post$b_Contrast_ISCO_IS_Block))*100
+    MC_I_CO <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISCO_Congruency + 0.5 * m_post$b_Contrast_ISCO_Itemspecific  - 0.5*m_post$b_Contrast_ISCO_IS_Block))*100
+    MI_C_CO <- plogis((m_post$b_Intercept + 0.5* m_post$b_Contrast_ISCO_Congruency - 0.5 * m_post$b_Contrast_ISCO_Itemspecific  - 0.5*m_post$b_Contrast_ISCO_IS_Block))*100
+    MI_I_CO <- plogis((m_post$b_Intercept - 0.5* m_post$b_Contrast_ISCO_Congruency - 0.5 * m_post$b_Contrast_ISCO_Itemspecific  + 0.5*m_post$b_Contrast_ISCO_IS_Block))*100
     model_effects <- tibble(
       Congruency_PD = (MC_I_PD + MI_I_PD)/2 - (MC_C_PD + MI_C_PD)/2,
       Congruency_CO = (MC_I_CO + MI_I_CO)/2 - (MC_C_CO + MI_C_CO)/2,
@@ -231,7 +241,10 @@ conditional_effect_calc_acc <- function(effect, model){
       Stroop_MC_CO = MC_I_CO - MC_C_CO,
       Stroop_MI_CO = MI_I_CO - MI_C_CO,
       Control_PD = Stroop_MC_PD - Stroop_MI_PD,
-      Control_CO = Stroop_MC_CO - Stroop_MI_CO)
+      Control_CO = Stroop_MC_CO - Stroop_MI_CO,
+      Control_Dif_CO = Control_CO - Control_PD,
+      Conflict_improv_PD = MI_I_PD - MC_I_PD,
+      Conflict_improv_CO = MI_I_CO - MC_I_CO)
   }
   return(model_effects)
 }
@@ -269,13 +282,17 @@ Full_models_saveloc <- "C:/Users/doex9445/Dateien/Julius/AdaptiveControl/Data"
 
 #### Now that we have the table with our BFs, let us load the parameter estimates
 
+#load BF data
+BF_Results<- read.table(paste0(Full_models_saveloc, '/BF_results.csv'))
+
+
 # New Tibble
 Full_Model_Info <- BF_Results %>%
   mutate(mean = NA , lower95 = NA, upper95 = NA) 
 
 # Load and save the data
 
-mods = c("RT", "Acc")
+mods = c("RT")
 item_type = c("inducer","diagnostic")
 effect = c("LW", "IS")
 
@@ -305,21 +322,33 @@ for (md in mods) {
       for (vars in temp_t$parameter){
         group_in <- substr(vars, start = nchar(vars)-1, stop = nchar(vars))
         if (grepl("Congruency" ,vars)){
-          par = "Congruency"
+          parn = "Congruency"
         } 
-        if (grepl("Block" ,vars)){
-          par = "Listwide" 
+        else if (grepl("Block" ,vars)){
+          if (eff == "LW"){
+            parn = "Listwide"
+          } else{
+            parn = "Itemspecific"
+          }
+          
         } 
-        if (grepl("Control" ,vars)) {
-          par = "LW_Block"
+        else if (grepl("Control" ,vars)) {
+          if (eff == "LW"){
+            parn = "LW_Block"
+          } else{
+            parn = "IS_Block"
+          }
+        }
+        else{
+          parn = "something"
         }
         #NOTE: by accident when i created the models for the BF calculation, also the models
         # get a single row
         row_var <- sum_t %>% filter(parameter == vars)
         # Write values
-        Full_Model_Info$mean[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$mean
-        Full_Model_Info$lower95[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$lower95
-        Full_Model_Info$upper95[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == par] <- row_var$upper95
+        Full_Model_Info$mean[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == parn] <- row_var$mean
+        Full_Model_Info$lower95[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == parn] <- row_var$lower95
+        Full_Model_Info$upper95[Full_Model_Info$Item_type == itm & Full_Model_Info$Model == md & Full_Model_Info$Effect == eff & Full_Model_Info$Group == group_in & Full_Model_Info$Parameter == parn] <- row_var$upper95
       }
     }
   }
