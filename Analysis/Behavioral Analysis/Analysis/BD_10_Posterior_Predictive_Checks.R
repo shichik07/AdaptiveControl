@@ -20,6 +20,7 @@ library(plotrix) # to calculate standard error
 library(forcats)
 library(ggdist)
 library(hypr)
+library(ggthemes)
 
 # Set a seed for sake of reproducibility
 set.seed(32946)
@@ -340,7 +341,8 @@ post_sum <- bind_rows(PP_data_LW_ind, PP_data_LW_dia, PP_data_IS_ind, PP_data_IS
 save_path <- "C:/Users/doex9445/Dateien/Julius/AdaptiveControl/Figures/Behavior/"
 
 # Plot LWPCE effects
-LWPCE <- post_sum %>% filter(Item_specific == "List_wide")
+LWPCE <- post_sum %>% filter(Item_specific == "List_wide") %>% mutate(Group = as.factor(Group))
+levels(LWPCE$Group) <- list(HC = "CO", PD = "PD")
 pp_LWPCE <- ggplot(data = LWPCE, aes(x = Analysis_type, y= RT, color = Congruency, group = Congruency, shape = data_type)) +
   facet_grid(Item_type ~ Group) +
   theme_clean(base_family = "Zilla Slab", base_size = 14) +
@@ -384,7 +386,9 @@ ggsave(path = save_path,
 ISPCE <- post_sum %>% filter(Item_specific != "List_wide") %>%
   mutate(Analysis_type = case_when(
     Analysis_type == "main_con" ~ "MC",
-    Analysis_type == "main_incon" ~ "MI"))
+    Analysis_type == "main_incon" ~ "MI"))%>% 
+  mutate(Group = as.factor(Group))
+levels(ISPCE$Group) <- list(HC = "CO", PD = "PD")
   
 pp_ISPCE <-ggplot(data = ISPCE, aes(x = Analysis_type, y= RT, color = Congruency, group = Congruency, shape = data_type)) +
   facet_grid(Item_type ~ Group) +
