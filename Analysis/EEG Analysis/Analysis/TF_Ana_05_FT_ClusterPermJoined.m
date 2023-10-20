@@ -88,7 +88,7 @@ for eff = 1:2
         
         if lc == 1
             load_loc = fullfile(dirs.home, Participant_IDs{2}, 'LIMO_Output', strcat(Participant_IDs{2}, ['_GLM_',eff_name ,'_', phase_type,'.mat']));
-            load_loc = fullfile(dirs.home, Participant_IDs{2}, strcat(Participant_IDs{2}, ['_GLM_',eff_name ,'_', phase_type,'.mat']));
+            %load_loc = fullfile(dirs.home, Participant_IDs{2}, strcat(Participant_IDs{2}, ['_GLM_',eff_name ,'_', phase_type,'.mat']));
             
 
             load(load_loc, 'Betas');
@@ -96,7 +96,7 @@ for eff = 1:2
             Order = [1, 2];
         elseif lc == 2
             % load test data set
-            load_loc = fullfile(dirs.home, Participant_IDs{2}, 'LIMO_Output', strcat(Participant_IDs{2}, ['_GLM_',eff_name ,'_', phase_type,'_RL.mat']));
+            load_loc = fullfile(dirs.eegsave, Participant_IDs{2}, 'LIMO_Output', strcat(Participant_IDs{2}, ['_GLM_',eff_name ,'_', phase_type,'_RL.mat']));
             load(load_loc, 'Betas');
             Infos = InfosRL;
             Order = [3, 4];
@@ -126,7 +126,7 @@ for eff = 1:2
                     load(load_loc, 'Betas');
                     
                 elseif lc == 2
-                    load_loc = fullfile(dirs.home, Participant_IDs{sub}, 'LIMO_Output', strcat(Participant_IDs{sub}, ['_GLM_',eff_name ,'_', phase_type,'_RL.mat']));
+                    load_loc = fullfile(dirs.eegsave, Participant_IDs{sub}, 'LIMO_Output', strcat(Participant_IDs{sub}, ['_GLM_',eff_name ,'_', phase_type,'_RL.mat']));
                     load(load_loc, 'Betas');
                 end
                 
@@ -213,7 +213,7 @@ for eff = 1:2
             cfg.tail             = 0;
             cfg.clustertail      = 0;
             cfg.alpha            = 0.05;
-            cfg.numrandomization = 1000;
+            cfg.numrandomization = 10000;
             % specifies with which sensors other sensors can form clusters
             cfg_neighb.method    = 'distance';
             cfg.neighbours       = ft_prepare_neighbours(cfg_neighb, varg1);
