@@ -19,6 +19,8 @@ library(ggdist)
 library(ggtext)
 library(colorspace)
 library(ragg)
+library(ggpp) # so we can use the function dodgennudge
+library(ggpubr)
 
 # Set a seed for sake of reproducibility
 set.seed(32946)
@@ -264,7 +266,7 @@ save_path <- "C:/Users/doex9445/Dateien/Julius/AdaptiveControl/Figures/Behavior/
 
 save_n <- "Posterior_Summary_new1.png"
 
-ggsave(path = save_path, filename = save_n,  dpi=300,
+ggsave(path = save_path, filename = save_n,  dpi=600,
        width = 16.5,
        units = c("cm"))
 
@@ -277,7 +279,7 @@ new_dat <- Conditional_posterior %>%
 Control_eff2 <- ggplot(data =new_dat, aes(y = Plot_type, x = Mean_RT, fill = Item_type)) +
   facet_grid(Group ~ Effect)  + 
   stat_halfeye(aes(fill = Item_type, fill_ramp = stat(level)), .width = c(.66, .95), 
-               position = position_dodge(width = 0.8), side = "right", size = 1 ) +
+               position = position_dodge(width = 0.78), side = "right", scale = 1, size = 1, height = 0.8) +
   scale_fill_ramp_discrete(na.translate = FALSE, range = c(.5, 1)) +
   geom_vline(xintercept = 0, linetype = "dashed") +
   stat_summary(
@@ -291,7 +293,7 @@ Control_eff2 <- ggplot(data =new_dat, aes(y = Plot_type, x = Mean_RT, fill = Ite
     color = "white",
     size =3,
     vjust = -0.6,
-    position = position_dodge(width = 0.8)
+    position = position_dodge(width = 0.78)
   ) +
   coord_cartesian(xlim = c(-10, 120)) +
   labs(x= "RT in ms", y = "Congruency Effect", fill = "Item Type", fill_ramp = "Interval") +
@@ -330,7 +332,7 @@ Descriptives2 <- ggarrange(Control_eff2,
 
 save_n <- "Posterior_Summary_poster.png"
 
-ggsave(path = save_path, filename = save_n,  dpi=300,
+ggsave(path = save_path, filename = save_n,  dpi=600,
        width = 16,
-       height = 16,
+       height = 17,
        units = c("cm"))
