@@ -431,7 +431,7 @@ save_n <- "Descriptive_LWPCE_RT.png"
 ggsave(path = save_path, filename = save_n,  dpi=300)
 
 # Now let us combine the plots
-
+#tiff("Descriptive_LWPCE_combined.tiff", units="in", width=5.62, height=5.7, res=600)
 LWPCE_comb <- ggarrange(rbp_LWPCE + rremove("legend"), ggt_LWPCE,
           labels = c("A", "B"),
           ncol = 2, nrow = 1, align = "h", widths = c(1,2))
@@ -442,8 +442,11 @@ annotate_figure(LWPCE_comb,
 
 save_n <- "Descriptive_LWPCE_combined.png"
 
-ggsave(path = save_path, filename = save_n,  dpi=300)
+ggsave(path = save_path, filename = save_n,  dpi=600)
 
+
+# insert ggplot code
+#dev.off()
 
 
 # Now let us combine the plots
@@ -459,7 +462,7 @@ annotate_figure(ISPCE_comb,
 
 save_n <- "Descriptive_ISPCE_combined.png"
 
-ggsave(path = save_path, filename = save_n,  dpi=300)
+ggsave(path = save_path, filename = save_n,  dpi=600)
 
 # Do it for all the data
 Descriptives <- ggarrange(rbp_LWPCE + rremove("legend") + rremove("x.text") + rremove("xlab"), 
@@ -479,7 +482,7 @@ annotate_figure(Descriptives,
 
 save_n <- "Descriptives.png"
 
-ggsave(path = save_path, filename = save_n,  dpi=300,
+ggsave(path = save_path, filename = save_n,  dpi=600,
        width = 16.5,
        height = 19,
        units = c("cm"))
@@ -580,7 +583,7 @@ annotate_figure(Descriptives2,
 
 save_n <- "DescriptivesPoster.png"
 
-ggsave(path = save_path, filename = save_n,  dpi=300,
+ggsave(path = save_path, filename = save_n,  dpi=600,
        width = 8,
        height = 10.5,
        units = c("cm"))
