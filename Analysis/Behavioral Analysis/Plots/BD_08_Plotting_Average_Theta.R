@@ -66,7 +66,7 @@ Data <- Data1 %>%
 SL_ISPC <- Data %>%
   filter(Ana_type == "ISPC",
          Lock == "SL")
-
+hjust_var = 1
 
 
 Plt_sl_ISPCE <- ggplot(data = SL_ISPC, aes(x= Time , y = Pw, color = Prop_type, linetype = Congruency)) +
@@ -91,7 +91,7 @@ Plt_sl_ISPCE <- ggplot(data = SL_ISPC, aes(x= Time , y = Pw, color = Prop_type, 
     #legend.key = element_rect(fill = "White", colour = "black"),
     strip.text.x = element_text(face = "bold"),
     strip.text.y = element_text(face = "bold"),
-    axis.text.x = element_text(face="bold"),
+    axis.text.x = element_text(face="bold", angle = 45, hjust = hjust_var),
     axis.text.y = element_text(face="bold"),
     plot.title = element_text(face = "bold"),
     plot.title.position  =  "panel"
@@ -105,7 +105,7 @@ Plt_sl_ISPCE <- ggplot(data = SL_ISPC, aes(x= Time , y = Pw, color = Prop_type, 
                                                   alpha = 1)))
 
 save_n <- "Average_theta_ISPC_SL_new.png"
-ggsave(path = save_path, filename = save_n,  dpi=300)
+ggsave(path = save_path, filename = save_n,  dpi=600)
 
 
 
@@ -137,7 +137,7 @@ Plt_rl_ISPCE <- ggplot(data = RL_ISPC, aes(x= Time , y = Pw, color = Prop_type, 
     #legend.key = element_rect(fill = "White", colour = "black"),
     strip.text.x = element_text(face = "bold"),
     strip.text.y = element_text(face = "bold"),
-    axis.text.x = element_text(face="bold"),
+    axis.text.x = element_text(face="bold", angle = 45, hjust = hjust_var),
     axis.text.y = element_text(face="bold"),
     plot.title = element_text(face = "bold"),
     plot.title.position  =  "panel"
@@ -152,7 +152,7 @@ Plt_rl_ISPCE <- ggplot(data = RL_ISPC, aes(x= Time , y = Pw, color = Prop_type, 
 
 
 save_n <- "Average_theta_ISPC_RL_new.png"
-ggsave(path = save_path, filename = save_n,  dpi=300)
+ggsave(path = save_path, filename = save_n,  dpi=600)
 
 
 SL_LWPC <- Data %>%
@@ -181,7 +181,7 @@ Plt_sl_LWPCE <- ggplot(data = SL_LWPC, aes(x= Time , y = Pw, color = Prop_type, 
     #legend.key = element_rect(fill = "White", colour = "black"),
     strip.text.x = element_text(face = "bold"),
     strip.text.y = element_text(face = "bold"),
-    axis.text.x = element_text(face="bold"),
+    axis.text.x = element_text(face="bold", angle = 45, hjust = hjust_var),
     axis.text.y = element_text(face="bold"),
     plot.title = element_text(face = "bold"),
     plot.title.position  =  "panel"
@@ -195,7 +195,7 @@ Plt_sl_LWPCE <- ggplot(data = SL_LWPC, aes(x= Time , y = Pw, color = Prop_type, 
     alpha = 1)))
 
 save_n <- "Average_theta_LWPC_SL_new.png"
-ggsave(path = save_path, filename = save_n,  dpi=300)
+ggsave(path = save_path, filename = save_n,  dpi=600)
 
 
 
@@ -218,6 +218,7 @@ Plt_rl_LWPCE <- ggplot(data = RL_LWPC, aes(x= Time , y = Pw, color = Prop_type, 
   coord_cartesian(ylim = c( -4.2, -1.8)) +
   theme_bw(base_size = 9) +
   theme(
+    #axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
     panel.grid.minor = element_blank(),
     axis.title.x = element_text(face = "bold"),
     axis.title.y = element_text(face = "bold"),
@@ -226,7 +227,7 @@ Plt_rl_LWPCE <- ggplot(data = RL_LWPC, aes(x= Time , y = Pw, color = Prop_type, 
     #legend.key = element_rect(fill = "White", colour = "black"),
     strip.text.x = element_text(face = "bold"),
     strip.text.y = element_text(face = "bold"),
-    axis.text.x = element_text(face="bold"),
+    axis.text.x = element_text(face="bold", angle = 45, hjust = hjust_var),
     axis.text.y = element_text(face="bold"),
     plot.title = element_text(face = "bold"),
     plot.title.position  =  "panel"
@@ -241,7 +242,7 @@ Plt_rl_LWPCE <- ggplot(data = RL_LWPC, aes(x= Time , y = Pw, color = Prop_type, 
 
 
 save_n <- "Average_theta_LWPC_RL_new.png"
-ggsave(path = save_path, filename = save_n,  dpi=300)
+ggsave(path = save_path, filename = save_n,  dpi=600)
 
 
 # Now let us combine the plots for the ISPC data
@@ -256,7 +257,7 @@ ggsave(
   #device = agg_png,
   width = 16,
   height = 5.5,
-  units = "cm", dpi = 300
+  units = "cm", dpi = 600
 )
 
 ISPCE_comb <- ggarrange(Plt_sl_ISPCE, Plt_rl_ISPCE,
@@ -270,7 +271,7 @@ ggsave(
   #device = agg_png,
   width = 16, 
   height = 5.5,
-  units = "cm", dpi = 300
+  units = "cm", dpi = 600
 )
 
 
