@@ -17,6 +17,7 @@ library(ggpubr)
 library(ggdist)
 library(ggpattern)
 library(plotrix) # to calculate standard error
+library(patchwork)
 
 # Set a seed for sake of reproducibility
 set.seed(32946)
@@ -167,6 +168,8 @@ ggt_LWPCE <- ggplot(data = LWPCE_SUM, aes(x= quant_rank , y = Group_RT, color = 
     expand = c(.001, .001)
   ) +
   theme(
+    panel.background = element_rect(fill = "white",
+                                    colour = "white"),
     panel.grid.minor = element_blank(),
     panel.grid.major.x = element_blank(),
     axis.ticks = element_blank(),
@@ -213,6 +216,8 @@ ggt_ISPCE <- ggplot(data = ISPCE_SUM, aes(x= quant_rank , y = Group_RT, color = 
     expand = c(.001, .001)
   ) +
   theme(
+    panel.background = element_rect(fill = "white",
+                                    colour = "white"),
     panel.grid.minor = element_blank(),
     panel.grid.major.x = element_blank(),
     axis.title.x = element_text(face = "bold"),
@@ -259,6 +264,8 @@ rbp <- ggplot(data = Data_RT_ISPCE, aes(x = Analysis_type, y = RT, fill = Congru
     expand = c(.001, .001)
   ) +
   theme(
+    panel.background = element_rect(fill = "white",
+                                    colour = "white"),
     panel.grid.minor = element_blank(),
     panel.grid.major.x = element_blank(),
     axis.title.x = element_text(face = "bold"),
@@ -297,6 +304,8 @@ rbp_ISPCE <- ggplot(data = Data_RT_ISPCE, aes(x = Analysis_type, y = RT, fill = 
     expand = c(.001, .001)
   ) +
   theme(
+    panel.background = element_rect(fill = "white",
+                                    colour = "white"),
     panel.grid.minor = element_blank(),
     plot.subtitle = element_text(face = "bold",
                                  size = 13),
@@ -394,6 +403,8 @@ rbp_LWPCE <- ggplot(data = Data_RT_LWPCE, aes(x = Analysis_type, y = RT, fill = 
     expand = c(.001, .001)
   ) +
   theme(
+    panel.background = element_rect(fill = "white",
+                                    colour = "white"),
     panel.grid.minor = element_blank(),
     panel.grid.major.x = element_blank(),
     axis.title.x = element_text(face = "bold"),
@@ -465,22 +476,27 @@ save_n <- "Descriptive_ISPCE_combined.png"
 ggsave(path = save_path, filename = save_n,  dpi=600)
 
 # Do it for all the data
-Descriptives <- ggarrange(rbp_LWPCE + rremove("legend") + rremove("x.text") + rremove("xlab"), 
+text <- "Reaction Time Distributions"
+
+# Create a text grob
+tgrob <- text_grob(text,size = 15, face = "bold")
+# Draw the text
+title <- as_ggplot(tgrob) + theme(plot.margin = margin(0,3,0,0, "cm"))
+
+Descriptives <- ggarrange(NULL, title, 
+                          rbp_LWPCE + rremove("legend") + rremove("x.text") + rremove("xlab"), 
                           ggt_LWPCE + rremove("x.text") + rremove("xlab"), 
                           NULL, NULL,
                           rbp_ISPCE + rremove("legend"), ggt_ISPCE,
-          labels = c("A", "B", "C", "D", NULL, NULL),
+          labels = c("", "", "A", "B", "C", "D"),
           label.y = 0.97,
           vjust = 0.2,
-          ncol = 2, nrow = 3, align = "h", widths = c(3,4),
-          heights = c(4.5, -0.5, 4.5),
-          common.legend = TRUE, legend = "right")
+          ncol = 2, nrow = 4, align = "h", widths = c(3,4),
+          heights = c(.6, 4.5, 0.5, 4.5),
+          common.legend = TRUE, legend = "right") + bgcolor("white")
+                
 
-annotate_figure(Descriptives,
-                top = text_grob( "Reaction Time Distributions", face = "bold", size = 15))
-
-
-save_n <- "Descriptives.png"
+save_n <- "Descriptives.tiff"
 
 ggsave(path = save_path, filename = save_n,  dpi=600,
        width = 16.5,
@@ -509,6 +525,8 @@ ggt_LWPCE2 <- ggplot(data = LWPCE_SUM, aes(x= quant_rank , y = Group_RT, color =
     expand = c(.001, .001)
   ) +
   theme(
+    panel.background = element_rect(fill = "white",
+                                    colour = "white"),
     panel.grid.minor = element_blank(),
     panel.grid.major.x = element_blank(),
     axis.ticks = element_blank(),
@@ -545,6 +563,8 @@ ggt_ISPCE2 <- ggplot(data = ISPCE_SUM, aes(x= quant_rank , y = Group_RT, color =
     expand = c(.001, .001)
   ) +
   theme(
+    panel.background = element_rect(fill = "white",
+                                    colour = "white"),
     panel.grid.minor = element_blank(),
     panel.grid.major.x = element_blank(),
     axis.title.x = element_text(face = "bold"),
@@ -587,3 +607,5 @@ ggsave(path = save_path, filename = save_n,  dpi=600,
        width = 8,
        height = 10.5,
        units = c("cm"))
+
+ 1 / (1 + exp(-(0.34 - 0.747035)))
