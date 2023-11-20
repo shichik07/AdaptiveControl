@@ -326,11 +326,11 @@ Control_eff2 <- ggplot(data =new_dat, aes(y = Plot_type, x = Mean_RT, fill = Ite
 
 Descriptives2 <- ggarrange(Control_eff2,
                            #labels = c("A"),
-                           ncol = 1, nrow = 1, align = "h", widths = c(2))
+                           ncol = 1, nrow = 1, align = "h", widths = c(2)) +  bgcolor("white")
 
 
 
-save_n <- "Posterior_Summary_poster.png"
+save_n <- "Posterior_Summary_poster.tiff"
 
 ggsave(path = save_path, filename = save_n,  dpi=600,
        width = 16,
