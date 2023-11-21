@@ -476,14 +476,8 @@ save_n <- "Descriptive_ISPCE_combined.png"
 ggsave(path = save_path, filename = save_n,  dpi=600)
 
 # Do it for all the data
-text <- "Reaction Time Distributions"
 
-# Create a text grob
-tgrob <- text_grob(text,size = 15, face = "bold")
-# Draw the text
-title <- as_ggplot(tgrob) + theme(plot.margin = margin(0,3,0,0, "cm"))
-
-Descriptives <- ggarrange(NULL, title, 
+Descriptives <- ggarrange(NULL, NULL, 
                           rbp_LWPCE + rremove("legend") + rremove("x.text") + rremove("xlab"), 
                           ggt_LWPCE + rremove("x.text") + rremove("xlab"), 
                           NULL, NULL,
@@ -491,10 +485,13 @@ Descriptives <- ggarrange(NULL, title,
           labels = c("", "", "A", "B", "C", "D"),
           label.y = 0.97,
           vjust = 0.2,
-          ncol = 2, nrow = 4, align = "h", widths = c(3,4),
-          heights = c(.6, 4.5, 0.5, 4.5),
-          common.legend = TRUE, legend = "right") + bgcolor("white")
-                
+          ncol = 2, nrow = 4,align = "hv",  widths = c(3,4),
+          heights = c(.3, 4.0, -0.35, 4.0),
+          common.legend = TRUE, legend = "right") + bgcolor("white") + theme(title = )
+
+annotate_figure(Descriptives,
+                fig.lab = "Reaction Time Distributions", fig.lab.face = "bold", fig.lab.size = 15
+)
 
 save_n <- "Descriptives.tiff"
 
