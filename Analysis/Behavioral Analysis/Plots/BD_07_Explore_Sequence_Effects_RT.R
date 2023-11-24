@@ -487,7 +487,7 @@ Descriptives <- ggarrange(NULL, NULL,
           vjust = 0.2,
           ncol = 2, nrow = 4,align = "hv",  widths = c(3,4),
           heights = c(.3, 4.0, -0.35, 4.0),
-          common.legend = TRUE, legend = "right") + bgcolor("white") + theme(title = )
+          common.legend = TRUE, legend = "right") + bgcolor("white") + theme(title = ) + border(color = "white", size = 0, linetype = NULL)
 
 annotate_figure(Descriptives,
                 fig.lab = "Reaction Time Distributions", fig.lab.face = "bold", fig.lab.size = 15
